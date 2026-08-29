@@ -1,0 +1,534 @@
+document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+  anchor.addEventListener('click', function (event) {
+    event.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+
+const yearEl = document.getElementById('year');
+if (yearEl) {
+  yearEl.textContent = new Date().getFullYear();
+}
+
+const planKey = 'motionflow_plan';
+const usageKey = 'motionflow_usage';
+const userKey = 'motionflow_user';
+const accountsKey = 'motionflow_accounts';
+
+function getTodayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getCurrentUser() {
+  try {
+    return JSON.parse(localStorage.getItem(userKey) || 'null');
+  } catch {
+    return null;
+  }
+}
+
+function getAccounts() {
+  try {
+    return JSON.parse(localStorage.getItem(accountsKey) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function saveCurrentUser(username, email, plan = 'free', password = '') {
+  const user = { username, email, plan, password };
+  localStorage.setItem(userKey, JSON.stringify(user));
+  updateAuthUI();
+  return user;
+}
+
+function syncUserToAccounts(username, email, plan = 'free', password = '') {
+  const accounts = getAccounts();
+  const existingIndex = accounts.findIndex((account) => {
+    return account.username.toLowerCase() === username.toLowerCase() || account.email.toLowerCase() === email.toLowerCase();
+  });
+
+  const user = { username, email, plan, password };
+
+  if (existingIndex >= 0) {
+    accounts[existingIndex] = { ...accounts[existingIndex], ...user };
+  } else {
+    accounts.push(user);
+  }
+
+  localStorage.setItem(accountsKey, JSON.stringify(accounts));
+  return user;
+}
+
+function getPlan() {
+  const user = getCurrentUser();
+  if (user && user.plan) return user.plan;
+  return localStorage.getItem(planKey) || 'free';
+}
+
+function setPlan(plan) {
+  const user = getCurrentUser();
+  if (user) {
+    const updatedUser = { ...user, plan };
+    localStorage.setItem(userKey, JSON.stringify(updatedUser));
+    syncUserToAccounts(updatedUser.username, updatedUser.email, plan);
+  } else {
+    localStorage.setItem(planKey, plan);
+  }
+  updatePlanUI();
+}
+
+function getUsageMap() {
+  try {
+    return JSON.parse(localStorage.getItem(usageKey) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function getTodayUsage() {
+  const map = getUsageMap();
+  return Number(map[getTodayKey()] || 0);
+}
+
+function setTodayUsage(value) {
+  const map = getUsageMap();
+  map[getTodayKey()] = value;
+  localStorage.setItem(usageKey, JSON.stringify(map));
+}
+
+function updatePlanUI() {
+  const planTag = document.getElementById('planTag');
+  const statusPill = document.getElementById('statusPill');
+  const usageCounter = document.getElementById('usageCounter');
+  const plan = getPlan();
+  const user = getCurrentUser();
+
+  if (planTag) {
+    planTag.textContent = plan === 'premium' ? 'Plan: Premium' : 'Plan: Gratis';
+  }
+
+  if (usageCounter) {
+    const current = getTodayUsage();
+    usageCounter.textContent = `${current} / ${plan === 'premium' ? '∞' : '1'}`;
+  }
+
+  if (statusPill) {
+    statusPill.textContent = user
+      ? (plan === 'premium' ? 'Premium activo' : 'Límite diario disponible')
+      : 'Registrate para empezar';
+  }
+}
+
+function updateAuthUI() {
+  const generateBtn = document.getElementById('generateBtn');
+  const authSummary = document.getElementById('authSummary');
+  const user = getCurrentUser();
+
+  if (generateBtn) {
+    generateBtn.disabled = !user;
+  }
+
+  if (authSummary) {
+    authSummary.textContent = user
+      ? `Cuenta activa: ${user.username} · ${user.email}`
+      : 'Todavía no tienes cuenta.';
+  }
+
+  updatePlanUI();
+}
+
+function showToast(message, isError = false) {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  toast.textContent = message;
+  toast.style.color = isError ? '#ffb7b7' : '#f1d8a2';
+}
+
+function canGenerate(kind = 'video') {
+  const user = getCurrentUser();
+  const plan = getPlan();
+
+  if (kind === 'photo-video') return true;
+  if (plan === 'premium') return true;
+  if (!user) return true;
+  return getTodayUsage() < 1;
+}
+
+let lastPhotoPreview = '';
+
+function renderPreview(kind, prompt, extraLabel = '') {
+  const preview = document.getElementById('studioPreview');
+  if (!preview) return;
+
+  const label = kind === 'image'
+    ? 'Imagen creada'
+    : kind === 'photo-video'
+      ? 'Video desde foto'
+      : 'Video creado';
+  const promptText = prompt ? prompt.trim() : 'Sin descripción';
+  const detail = extraLabel || promptText;
+  const photoBackground = lastPhotoPreview ? `background-image: url("${lastPhotoPreview}"); background-size: cover; background-position: center;` : '';
+
+  preview.innerHTML = `
+    <div class="studio-preview-label">${label}</div>
+    <div class="studio-preview-media">
+      <div class="studio-thumb" style="${kind === 'image'
+        ? 'linear-gradient(135deg, rgba(215,175,101,0.3), rgba(255,255,255,0.08))'
+        : kind === 'photo-video'
+          ? photoBackground || 'linear-gradient(135deg, rgba(87, 180, 255, 0.34), rgba(255,255,255,0.08))'
+          : 'linear-gradient(135deg, rgba(117, 185, 255, 0.28), rgba(255,255,255,0.08))'}"></div>
+      <div class="studio-meta">
+        <strong>${kind === 'image' ? 'Imagen generada' : kind === 'photo-video' ? 'Video desde foto' : 'Video generado'}</strong>
+        <span>${detail.slice(0, 54)}${detail.length > 54 ? '...' : ''}</span>
+      </div>
+    </div>
+  `;
+}
+
+const photoInput = document.getElementById('photoInput');
+if (photoInput) {
+  photoInput.addEventListener('change', () => {
+    const file = photoInput.files && photoInput.files[0];
+    const photoStage = document.getElementById('photoStage');
+    if (!file || !photoStage) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('El archivo seleccionado debe ser una imagen.', true);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target && event.target.result ? String(event.target.result) : '';
+      lastPhotoPreview = result;
+      photoStage.innerHTML = `
+        <div class="photo-frame">
+          <img src="${result}" alt="Foto seleccionada para convertir en video" />
+        </div>
+        <div class="photo-caption">
+          <span class="photo-pill">Listo</span>
+          <strong>${file.name}</strong>
+        </div>
+      `;
+      showToast('Imagen lista para convertir en video.');
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function generateVideo() {
+  const promptInput = document.getElementById('videoPrompt');
+  const statusPill = document.getElementById('statusPill');
+  const usageCounter = document.getElementById('usageCounter');
+
+  if (!canGenerate('video')) {
+    showToast('Ya has usado tu vídeo diario gratis. Activa Premium para generar videos ilimitados.', true);
+    if (statusPill) statusPill.textContent = 'Límite alcanzado';
+    return;
+  }
+
+  if (statusPill) {
+    statusPill.textContent = 'Generando video...';
+  }
+
+  const currentPrompt = promptInput ? promptInput.value.trim() : '';
+  showToast(currentPrompt ? `Generando video para: ${currentPrompt.slice(0, 42)}...` : 'Generando video...');
+
+  setTimeout(() => {
+    const plan = getPlan();
+    if (plan !== 'premium' && getCurrentUser()) {
+      const nextUsage = getTodayUsage() + 1;
+      setTodayUsage(nextUsage);
+    }
+
+    renderPreview('video', currentPrompt || 'Anuncio premium con estilo cinematográfico');
+
+    if (statusPill) {
+      statusPill.textContent = 'Video listo';
+    }
+
+    if (usageCounter) {
+      usageCounter.textContent = plan === 'premium' ? `∞ / ∞` : `${getTodayUsage()} / 1`;
+    }
+
+    showToast(plan === 'premium' || !getCurrentUser()
+      ? 'Video generado. Puedes seguir creando desde esta vista.'
+      : 'Video generado. Hoy ya usaste tu cuota gratuita.');
+  }, 1200);
+}
+
+const signupForm = document.getElementById('signupForm');
+if (signupForm) {
+  signupForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    const usernameInput = document.getElementById('usernameInput');
+    const emailInput = document.getElementById('emailInput');
+    const username = usernameInput ? usernameInput.value.trim() : '';
+    const email = emailInput ? emailInput.value.trim() : '';
+
+    if (!username || !email) {
+      showToast('Necesitas usuario y correo para registrarte.', true);
+      return;
+    }
+
+    if (!email.includes('@') || !email.includes('.')) {
+      showToast('Introduce un correo válido.', true);
+      return;
+    }
+
+    const accounts = getAccounts();
+    const exists = accounts.some((account) => {
+      return account.username.toLowerCase() === username.toLowerCase() || account.email.toLowerCase() === email.toLowerCase();
+    });
+
+    if (exists) {
+      showToast('Ese usuario o correo ya está registrado.', true);
+      return;
+    }
+
+    const user = syncUserToAccounts(username, email, 'free', '');
+    saveCurrentUser(user.username, user.email, user.plan, user.password || '');
+    showToast(`Registro completado. Bienvenido, ${username}.`);
+    signupForm.reset();
+  });
+}
+
+const generateBtn = document.getElementById('generateBtn');
+if (generateBtn) {
+  generateBtn.addEventListener('click', generateVideo);
+}
+
+document.querySelectorAll('.quick-create-btn').forEach((button) => {
+  button.addEventListener('click', () => {
+    const kind = button.dataset.kind || 'video';
+    const promptInput = document.getElementById('videoPrompt');
+    const photoInput = document.getElementById('photoInput');
+    const prompt = promptInput ? promptInput.value.trim() : '';
+    const statusPill = document.getElementById('statusPill');
+
+    if (kind === 'photo-video') {
+      const file = photoInput && photoInput.files ? photoInput.files[0] : null;
+      if (!file) {
+        showToast('Sube una foto para convertirla en video.', true);
+        return;
+      }
+
+      if (statusPill) {
+        statusPill.textContent = 'Convirtiendo foto a video...';
+      }
+
+      showToast('Convirtiendo foto a video...');
+
+      setTimeout(() => {
+        renderPreview('photo-video', prompt || 'Transformación de foto a video', file.name);
+        if (statusPill) {
+          statusPill.textContent = 'Video desde foto listo';
+        }
+        showToast('Foto convertida en video. Ya puedes reutilizarla o exportarla.');
+      }, 1000);
+      return;
+    }
+
+    if (statusPill) {
+      statusPill.textContent = kind === 'image' ? 'Generando imagen...' : 'Generando video...';
+    }
+
+    showToast(kind === 'image' ? 'Creando imagen...' : 'Creando video...');
+
+    setTimeout(() => {
+      renderPreview(kind, prompt || 'Diseño premium para marca digital');
+      if (statusPill) {
+        statusPill.textContent = kind === 'image' ? 'Imagen lista' : 'Video listo';
+      }
+      showToast(kind === 'image'
+        ? 'Imagen creada. Puedes seguir con tu siguiente idea.'
+        : 'Video creado. Puedes seguir generando desde la misma vista.');
+    }, 1000);
+  });
+});
+
+const upgradeBtn = document.getElementById('upgradeBtn');
+if (upgradeBtn) {
+  upgradeBtn.addEventListener('click', () => {
+    const user = getCurrentUser();
+    if (!user) {
+      showToast('Primero crea tu cuenta con usuario y correo.', true);
+      return;
+    }
+    setPlan('premium');
+    showToast('Premium activado. Ahora puedes generar videos sin límites.');
+  });
+}
+
+document.querySelectorAll('.plan-btn').forEach((button) => {
+  button.addEventListener('click', () => {
+    const user = getCurrentUser();
+    if (!user) {
+      showToast('Primero regístrate con usuario y correo.', true);
+      return;
+    }
+
+    const plan = button.dataset.plan;
+    setPlan(plan || 'free');
+    showToast(plan === 'premium'
+      ? 'Premium activado para generar videos ilimitados.'
+      : 'Has elegido el plan gratuito. Puedes generar 1 video al día.');
+  });
+});
+
+const loginForm = document.getElementById('loginForm');
+if (loginForm) {
+  loginForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    const usernameInput = document.getElementById('loginUsername');
+    const emailInput = document.getElementById('loginEmail');
+    const passwordInput = document.getElementById('loginPassword');
+    const username = usernameInput ? usernameInput.value.trim() : '';
+    const email = emailInput ? emailInput.value.trim() : '';
+    const password = passwordInput ? passwordInput.value.trim() : '';
+    const toast = document.getElementById('authToast');
+
+    if (!username || !email || !password) {
+      if (toast) {
+        toast.textContent = 'Necesitas usuario, correo y contraseña para entrar.';
+        toast.style.color = '#ffb7b7';
+      }
+      return;
+    }
+
+    const accounts = getAccounts();
+    const account = accounts.find((entry) => {
+      return entry.username.toLowerCase() === username.toLowerCase()
+        && entry.email.toLowerCase() === email.toLowerCase()
+        && entry.password === password;
+    });
+
+    if (!account) {
+      if (toast) {
+        toast.textContent = 'Credenciales incorrectas. Comprueba usuario, correo y contraseña.';
+        toast.style.color = '#ffb7b7';
+      }
+      return;
+    }
+
+    saveCurrentUser(account.username, account.email, account.plan || 'free', account.password || '');
+    if (toast) {
+      toast.textContent = `Hola, ${account.username}. Redirigiendo...`;
+      toast.style.color = '#f1d8a2';
+    }
+
+    setTimeout(() => {
+      window.location.href = 'dashboard.html';
+    }, 700);
+  });
+}
+
+const registerForm = document.getElementById('registerForm');
+if (registerForm) {
+  registerForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    const usernameInput = document.getElementById('registerUsername');
+    const emailInput = document.getElementById('registerEmail');
+    const passwordInput = document.getElementById('registerPassword');
+    const username = usernameInput ? usernameInput.value.trim() : '';
+    const email = emailInput ? emailInput.value.trim() : '';
+    const password = passwordInput ? passwordInput.value.trim() : '';
+    const toast = document.getElementById('authToast');
+
+    if (!username || !email || !password) {
+      if (toast) {
+        toast.textContent = 'Completa usuario, correo y contraseña.';
+        toast.style.color = '#ffb7b7';
+      }
+      return;
+    }
+
+    if (!email.includes('@') || !email.includes('.')) {
+      if (toast) {
+        toast.textContent = 'Introduce un correo válido.';
+        toast.style.color = '#ffb7b7';
+      }
+      return;
+    }
+
+    if (password.length < 6) {
+      if (toast) {
+        toast.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+        toast.style.color = '#ffb7b7';
+      }
+      return;
+    }
+
+    const accounts = getAccounts();
+    const exists = accounts.some((account) => {
+      return account.username.toLowerCase() === username.toLowerCase() || account.email.toLowerCase() === email.toLowerCase();
+    });
+
+    if (exists) {
+      if (toast) {
+        toast.textContent = 'Ese usuario o correo ya existe.';
+        toast.style.color = '#ffb7b7';
+      }
+      return;
+    }
+
+    const user = syncUserToAccounts(username, email, 'free', password);
+    saveCurrentUser(user.username, user.email, user.plan, user.password || '');
+    if (toast) {
+      toast.textContent = `Cuenta creada para ${username}. Redirigiendo...`;
+      toast.style.color = '#f1d8a2';
+    }
+
+    setTimeout(() => {
+      window.location.href = 'dashboard.html';
+    }, 700);
+  });
+}
+
+const authTabs = document.querySelectorAll('.auth-tab');
+const authPanels = document.querySelectorAll('.auth-panel');
+authTabs.forEach((tab) => {
+  tab.addEventListener('click', () => {
+    const target = tab.dataset.authTab;
+    authTabs.forEach((item) => item.classList.toggle('active', item === tab));
+    authPanels.forEach((panel) => {
+      panel.classList.toggle('active', panel.id === `${target}Panel`);
+    });
+  });
+});
+
+const passwordToggles = document.querySelectorAll('.password-toggle');
+passwordToggles.forEach((toggle) => {
+  toggle.addEventListener('click', () => {
+    const group = toggle.closest('.auth-password-group');
+    const input = group ? group.querySelector('input') : null;
+    if (!input) return;
+
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    toggle.textContent = isPassword ? 'Ocultar' : 'Mostrar';
+  });
+});
+
+const currentPage = window.location.pathname.split('/').pop();
+if (currentPage === 'login.html' && getCurrentUser()) {
+  window.location.href = 'dashboard.html';
+}
+
+const contactForm = document.querySelector('.contact-form');
+if (contactForm) {
+  contactForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    alert('Gracias por tu mensaje. Te responderemos pronto.');
+    contactForm.reset();
+  });
+}
+
+updateAuthUI();

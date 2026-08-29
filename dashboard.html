@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Panel de usuario MotionFlow AI" />
+  <title>MotionFlow AI | Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(215,175,101,0.16), transparent 18%),
+        linear-gradient(180deg, #080c11 0%, #0d1722 100%);
+    }
+
+    .dashboard-shell {
+      width: min(1260px, calc(100% - 2rem));
+      margin: 2rem auto 4rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .dashboard-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    .sidebar,
+    .panel-card,
+    .workspace-card {
+      background: rgba(18, 24, 33, 0.82);
+      border: 1px solid rgba(222, 204, 176, 0.18);
+      border-radius: 24px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.28);
+    }
+
+    .sidebar {
+      padding: 1.1rem;
+      position: sticky;
+      top: 5.5rem;
+    }
+
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      margin-bottom: 1.3rem;
+    }
+
+    .sidebar-nav {
+      display: grid;
+      gap: 0.6rem;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding: 0.8rem 0.9rem;
+      border-radius: 12px;
+      color: var(--muted);
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+    }
+
+    .sidebar-link.active,
+    .sidebar-link:hover {
+      background: rgba(255,255,255,0.03);
+      border-color: rgba(215,175,101,0.25);
+      color: var(--white);
+    }
+
+    .sidebar-badge {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      background: rgba(215,175,101,0.1);
+      color: var(--gold-soft);
+      border: 1px solid rgba(215,175,101,0.2);
+    }
+
+    .workspace {
+      display: grid;
+      gap: 1.2rem;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 1.2rem;
+      background: rgba(14, 19, 27, 0.7);
+      border: 1px solid rgba(222, 204, 176, 0.18);
+      border-radius: 20px;
+    }
+
+    .topbar-title h1 {
+      font-size: 1.4rem;
+      letter-spacing: -0.04em;
+      margin-bottom: 0.2rem;
+    }
+
+    .topbar-title span {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .user-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.55rem 0.8rem;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--line);
+      color: var(--white);
+      font-weight: 600;
+    }
+
+    .user-dot {
+      display: inline-flex;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 12px rgba(143, 231, 196, 0.8);
+    }
+
+    .workspace-card {
+      padding: 1.4rem;
+    }
+
+    .studio-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 1.2rem;
+    }
+
+    .prompt-panel,
+    .preview-panel {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .panel-card {
+      padding: 1rem;
+    }
+
+    .field-label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    textarea,
+    input,
+    select {
+      width: 100%;
+      background: rgba(8, 12, 17, 0.72);
+      border: 1px solid rgba(214, 204, 176, 0.18);
+      border-radius: 14px;
+      color: var(--white);
+      padding: 0.9rem 1rem;
+      font: inherit;
+    }
+
+    textarea {
+      min-height: 150px;
+      resize: vertical;
+    }
+
+    .upload-box {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed rgba(215,175,101,0.34);
+      background: rgba(215,175,101,0.04);
+      border-radius: 14px;
+      min-height: 88px;
+      padding: 0.8rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .preview-panel .panel-card {
+      min-height: 380px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      background: linear-gradient(180deg, rgba(15, 22, 31, 0.9), rgba(9,14,20,0.8));
+    }
+
+    .preview-frame {
+      height: 250px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: linear-gradient(135deg, rgba(215,175,101,0.18), rgba(255,255,255,0.06));
+      position: relative;
+      overflow: hidden;
+    }
+
+    .preview-frame::before {
+      content: "";
+      position: absolute;
+      inset: 18% 22%;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(215,175,101,0.75), rgba(255,255,255,0.15));
+    }
+
+    .preview-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .metric {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 1rem;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 1.7rem;
+      letter-spacing: -0.06em;
+    }
+
+    .metric span {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    @media (max-width: 920px) {
+      .dashboard-layout,
+      .studio-grid,
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-orb orb-one"></div>
+  <div class="bg-orb orb-two"></div>
+
+  <div class="dashboard-shell">
+    <div class="dashboard-layout">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <span class="brand-mark">M</span>
+          <span>MotionFlow</span>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a class="sidebar-link active" href="#">
+            <span>Panel</span>
+            <span class="sidebar-badge">Live</span>
+          </a>
+          <a class="sidebar-link" href="#">
+            <span>Generador</span>
+            <span class="sidebar-badge">AI</span>
+          </a>
+          <a class="sidebar-link" href="#">
+            <span>Fotos</span>
+            <span class="sidebar-badge">12</span>
+          </a>
+          <a class="sidebar-link" href="#">
+            <span>Historial</span>
+            <span class="sidebar-badge">8</span>
+          </a>
+          <a class="sidebar-link" href="#">
+            <span>Configuración</span>
+            <span class="sidebar-badge">+</span>
+          </a>
+        </nav>
+      </aside>
+
+      <main class="workspace">
+        <header class="topbar">
+          <div class="topbar-title">
+            <h1>Panel del usuario</h1>
+            <span>Empieza a crear imágenes y videos desde aquí.</span>
+          </div>
+
+          <div class="topbar-actions">
+            <div class="user-pill">
+              <span class="user-dot"></span>
+              <span id="userNameLabel">Usuario</span>
+            </div>
+            <button id="logoutBtn" class="btn btn-secondary" type="button">Cerrar sesión</button>
+          </div>
+        </header>
+
+        <section class="workspace-card">
+          <div class="studio-grid">
+            <div class="prompt-panel">
+              <div class="panel-card">
+                <label class="field-label" for="dashboardPrompt">Descripción del contenido</label>
+                <textarea id="dashboardPrompt" placeholder="Ej: Un producto premium de skincare con movimiento elegante, luz dorada y fondo oscuro.">Un producto premium de skincare con movimiento elegante, luz dorada y fondo oscuro.</textarea>
+              </div>
+
+              <div class="panel-card">
+                <label class="field-label" for="dashboardImage">Importar imagen</label>
+                <div class="upload-box">
+                  <input id="dashboardImage" type="file" accept="image/*" />
+                </div>
+              </div>
+
+              <div class="button-row">
+                <button type="button" class="btn btn-secondary">Crear imagen</button>
+                <button type="button" class="btn btn-primary">Crear video</button>
+                <button type="button" class="btn btn-secondary">Foto a video</button>
+              </div>
+            </div>
+
+            <aside class="preview-panel">
+              <div class="panel-card">
+                <div class="preview-frame"></div>
+                <div class="preview-meta">
+                  <strong>Vista previa</strong>
+                  <span>Listo para generar</span>
+                </div>
+              </div>
+            </aside>
+          </div>
+
+          <div class="stats-grid">
+            <div class="metric">
+              <strong>1</strong>
+              <span>video gratis diario</span>
+            </div>
+            <div class="metric">
+              <strong>∞</strong>
+              <span>plan premium</span>
+            </div>
+            <div class="metric">
+              <strong>12</strong>
+              <span>archivos guardados</span>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    const user = JSON.parse(localStorage.getItem('motionflow_user') || 'null');
+    const userNameLabel = document.getElementById('userNameLabel');
+    if (userNameLabel) {
+      userNameLabel.textContent = user ? user.username : 'Invitado';
+    }
+
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('motionflow_user');
+        localStorage.removeItem('motionflow_plan');
+        localStorage.removeItem('motionflow_usage');
+        localStorage.removeItem('motionflow_accounts');
+        window.location.href = 'login.html';
+      });
+    }
+  </script>
+</body>
+</html>
