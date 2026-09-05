@@ -1,9 +1,20 @@
 document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
   anchor.addEventListener('click', function (event) {
     event.preventDefault();
-    const target = document.querySelector(this.getAttribute('href'));
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const href = this.getAttribute('href') || '';
+    if (href === '#' || href === '') return;
+    if (href.startsWith('#')) {
+      const id = href.slice(1);
+      if (!id) return;
+      const target = document.getElementById(id);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    try {
+      const target = document.querySelector(href);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e) {
+      console.warn('Invalid selector in anchor scroll:', href, e);
     }
   });
 });
@@ -145,12 +156,12 @@ function updatePlanUI() {
 }
 
 function updateAuthUI() {
-  const generateBtn = document.getElementById('generateBtn');
+  const generateBtnEl = document.getElementById('generateBtn');
   const authSummary = document.getElementById('authSummary');
   const user = getCurrentUser();
 
-  if (generateBtn) {
-    generateBtn.disabled = !user;
+  if (generateBtnEl) {
+    generateBtnEl.disabled = !user;
   }
 
   if (authSummary) {
@@ -180,6 +191,8 @@ function canGenerate(kind = 'video') {
 }
 
 let lastPhotoPreview = '';
+let lastGeneratedVideoUrl = null;
+let lastGeneratedVideoName = null;
 
 function renderPreview(kind, prompt, extraLabel = '') {
   const preview = document.getElementById('studioPreview');
@@ -329,6 +342,8 @@ async function uploadPhotoToServer(file, allowNSFW = false) {
   const form = new FormData();
   form.append('photo', file);
   form.append('allow_nsfw', allowNSFW ? '1' : '0');
+  const user = getCurrentUser();
+  if (user) form.append('user', user.email || user.username || 'unknown');
 
   const endpoint = (window.location.hostname === 'localhost')
     ? 'http://localhost:3000/api/photo-to-video'
@@ -338,7 +353,24 @@ async function uploadPhotoToServer(file, allowNSFW = false) {
     method: 'POST',
     body: form
   });
-  return resp.json();
+
+  const contentType = resp.headers.get('content-type') || '';
+  if (!resp.ok) {
+    if (contentType.includes('application/json')) {
+      const err = await resp.json();
+      throw new Error(err.error || JSON.stringify(err));
+    } else {
+      const text = await resp.text();
+      throw new Error(`Server error ${resp.status}: ${text.slice(0, 200)}`);
+    }
+  }
+
+  if (contentType.includes('application/json')) {
+    return await resp.json();
+  } else {
+    const text = await resp.text();
+    throw new Error('Expected JSON from server but got: ' + text.slice(0,200));
+  }
 }
 
 // Quick-create buttons (with support for server-side photo->video)
@@ -377,15 +409,20 @@ document.querySelectorAll('.quick-create-btn').forEach((button) => {
         }
 
         const videoUrl = result.url;
+        lastGeneratedVideoUrl = videoUrl;
+        lastGeneratedVideoName = videoUrl.split('/').pop();
+
         const preview = document.getElementById('studioPreview');
         if (preview) {
-          preview.innerHTML = `<video controls src="${videoUrl}" style="max-width:100%;border-radius:8px"></video>`;
+          preview.innerHTML = `<video id="generatedVideo" controls src="${videoUrl}" style="max-width:100%;border-radius:8px"></video>`;
         }
+        const downloadBtn = document.getElementById('downloadBtn');
+        if (downloadBtn) downloadBtn.disabled = false;
         if (statusPill) statusPill.textContent = 'Video desde foto listo';
         showToast('Foto convertida en video. Puedes descargarla.');
       } catch (e) {
         console.error(e);
-        showToast('Error al convertir la foto.', true);
+        showToast(e.message || 'Error al convertir la foto.', true);
         if (statusPill) statusPill.textContent = 'Error';
       }
       return;
@@ -422,23 +459,52 @@ if (upgradeBtn) {
   });
 }
 
-document.querySelectorAll('.plan-btn').forEach((button) => {
-  button.addEventListener('click', () => {
-    const user = getCurrentUser();
-    if (!user) {
-      showToast('Primero regístrate con usuario y correo.', true);
+// Download button behavior
+const downloadBtn = document.getElementById('downloadBtn');
+if (downloadBtn) {
+  downloadBtn.disabled = true;
+  downloadBtn.addEventListener('click', async () => {
+    if (!lastGeneratedVideoUrl) return alert('No hay video generado para descargar.');
+    const filename = lastGeneratedVideoName || lastGeneratedVideoUrl.split('/').pop();
+
+    // Choose download URL that forces attachment on server
+    const downloadBase = (window.location.hostname === 'localhost') ? 'http://localhost:3000/media/download/' : '/media/download/';
+    const downloadUrl = downloadBase + encodeURIComponent(filename);
+
+    // Try anchor download first
+    try {
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
       return;
+    } catch (e) {
+      console.warn('Anchor download failed, falling back to fetch+blob', e);
     }
 
-    const plan = button.dataset.plan;
-    setPlan(plan || 'free');
-    showToast(plan === 'premium'
-      ? 'Premium activado para generar videos ilimitados.'
-      : 'Has elegido el plan gratuito. Puedes generar 1 video al día.');
+    // Fallback: fetch blob and download
+    try {
+      const resp = await fetch(downloadUrl);
+      if (!resp.ok) throw new Error('download failed');
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Error al descargar el archivo.');
+      console.error(err);
+    }
   });
-});
+}
 
-// Login form: ahora solo email + contraseña y soporte para "Recuérdame"
+// Login & register handlers (kept minimal here - main logic in script.js)
 const loginForm = document.getElementById('loginForm');
 if (loginForm) {
   loginForm.addEventListener('submit', (event) => {
@@ -461,7 +527,6 @@ if (loginForm) {
     }
 
     const accounts = getAccounts();
-    // Buscar por email y contraseña (no por usuario)
     const account = accounts.find((entry) => {
       return entry.email.toLowerCase() === email.toLowerCase()
         && entry.password === password;
@@ -475,117 +540,13 @@ if (loginForm) {
       return;
     }
 
-    // Guardar sesión según 'remember'
     saveCurrentUser(account.username || '', account.email, account.plan || 'free', account.password || '', remember);
     if (toast) {
       toast.textContent = `Hola, ${account.username || account.email}. Redirigiendo...`;
       toast.style.color = '#f1d8a2';
     }
 
-    // Redirección inmediata sin guardar entrada en el historial
     window.location.replace('dashboard.html');
-  });
-}
-
-const registerForm = document.getElementById('registerForm');
-if (registerForm) {
-  registerForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-
-    const usernameInput = document.getElementById('registerUsername');
-    const emailInput = document.getElementById('registerEmail');
-    const passwordInput = document.getElementById('registerPassword');
-    const username = usernameInput ? usernameInput.value.trim() : '';
-    const email = emailInput ? emailInput.value.trim() : '';
-    const password = passwordInput ? passwordInput.value.trim() : '';
-    const toast = document.getElementById('authToast');
-
-    if (!username || !email || !password) {
-      if (toast) {
-        toast.textContent = 'Completa usuario, correo y contraseña.';
-        toast.style.color = '#ffb7b7';
-      }
-      return;
-    }
-
-    if (!email.includes('@') || !email.includes('.')) {
-      if (toast) {
-        toast.textContent = 'Introduce un correo válido.';
-        toast.style.color = '#ffb7b7';
-      }
-      return;
-    }
-
-    if (password.length < 6) {
-      if (toast) {
-        toast.textContent = 'La contraseña debe tener al menos 6 caracteres.';
-        toast.style.color = '#ffb7b7';
-      }
-      return;
-    }
-
-    const accounts = getAccounts();
-    const exists = accounts.some((account) => {
-      return account.username.toLowerCase() === username.toLowerCase() || account.email.toLowerCase() === email.toLowerCase();
-    });
-
-    if (exists) {
-      if (toast) {
-        toast.textContent = 'Ese usuario o correo ya existe.';
-        toast.style.color = '#ffb7b7';
-      }
-      return;
-    }
-
-    const user = syncUserToAccounts(username, email, 'free', password);
-    // Por defecto al registrarse se recuerda la sesión (puedes cambiarlo si prefieres requerir login)
-    saveCurrentUser(user.username, user.email, user.plan, user.password || '', true);
-    if (toast) {
-      toast.textContent = `Cuenta creada para ${username}. Redirigiendo...`;
-      toast.style.color = '#f1d8a2';
-    }
-
-    // Redirección inmediata sin guardar entrada en el historial
-    window.location.replace('dashboard.html');
-  });
-}
-
-const authTabs = document.querySelectorAll('.auth-tab');
-const authPanels = document.querySelectorAll('.auth-panel');
-authTabs.forEach((tab) => {
-  tab.addEventListener('click', () => {
-    const target = tab.dataset.authTab;
-    authTabs.forEach((item) => item.classList.toggle('active', item === tab));
-    authPanels.forEach((panel) => {
-      panel.classList.toggle('active', panel.id === `${target}Panel`);
-    });
-  });
-});
-
-const passwordToggles = document.querySelectorAll('.password-toggle');
-passwordToggles.forEach((toggle) => {
-  toggle.addEventListener('click', () => {
-    const group = toggle.closest('.auth-password-group');
-    const input = group ? group.querySelector('input') : null;
-    if (!input) return;
-
-    const isPassword = input.type === 'password';
-    input.type = isPassword ? 'text' : 'password';
-    toggle.textContent = isPassword ? 'Ocultar' : 'Mostrar';
-  });
-});
-
-const currentPage = window.location.pathname.split('/').pop();
-if (currentPage === 'login.html' && getCurrentUser()) {
-  window.location.replace('dashboard.html');
-}
-
-const contactForm = document.querySelector('.contact-form');
-if (contactForm) {
-  contactForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    alert('Gracias por tu mensaje. Te responderemos pronto.');
-    contactForm.reset();
   });
 }
 
