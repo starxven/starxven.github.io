@@ -399,7 +399,7 @@ document.querySelectorAll('.plan-btn').forEach((button) => {
     showToast(plan === 'premium'
       ? 'Premium activado para generar videos ilimitados.'
       : 'Has elegido el plan gratuito. Puedes generar 1 video al día.');
-  });
+});
 });
 
 // Login form: ahora solo email + contraseña y soporte para "Recuérdame"
@@ -449,7 +449,7 @@ if (loginForm) {
     setTimeout(() => {
       window.location.href = 'dashboard.html';
     }, 700);
-  });
+}
 }
 
 const registerForm = document.getElementById('registerForm');
@@ -513,7 +513,7 @@ if (registerForm) {
     setTimeout(() => {
       window.location.href = 'dashboard.html';
     }, 700);
-  });
+}
 }
 
 const authTabs = document.querySelectorAll('.auth-tab');
