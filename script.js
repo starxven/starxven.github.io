@@ -180,6 +180,8 @@ function canGenerate(kind = 'video') {
 }
 
 let lastPhotoPreview = '';
+let lastGeneratedVideoUrl = null;
+let lastGeneratedVideoName = null;
 
 function renderPreview(kind, prompt, extraLabel = '') {
   const preview = document.getElementById('studioPreview');
@@ -377,10 +379,15 @@ document.querySelectorAll('.quick-create-btn').forEach((button) => {
         }
 
         const videoUrl = result.url;
+        lastGeneratedVideoUrl = videoUrl;
+        lastGeneratedVideoName = videoUrl.split('/').pop();
+
         const preview = document.getElementById('studioPreview');
         if (preview) {
-          preview.innerHTML = `<video controls src="${videoUrl}" style="max-width:100%;border-radius:8px"></video>`;
+          preview.innerHTML = `<video id="generatedVideo" controls src="${videoUrl}" style="max-width:100%;border-radius:8px"></video>`;
         }
+        const downloadBtn = document.getElementById('downloadBtn');
+        if (downloadBtn) downloadBtn.disabled = false;
         if (statusPill) statusPill.textContent = 'Video desde foto listo';
         showToast('Foto convertida en video. Puedes descargarla.');
       } catch (e) {
@@ -419,6 +426,63 @@ if (upgradeBtn) {
     }
     setPlan('premium');
     showToast('Premium activado. Ahora puedes generar videos sin límites.');
+  });
+}
+
+document.querySelectorAll('.plan-btn').forEach((button) => {
+  button.addEventListener('click', () => {
+    const user = getCurrentUser();
+    if (!user) {
+      showToast('Primero regístrate con usuario y correo.', true);
+      return;
+    }
+
+    const plan = button.dataset.plan;
+    setPlan(plan || 'free');
+    showToast(plan === 'premium'
+      ? 'Premium activado para generar videos ilimitados.'
+      : 'Has elegido el plan gratuito. Puedes generar 1 video al día.');
+  });
+});
+
+// Download button behavior
+const downloadBtn = document.getElementById('downloadBtn');
+if (downloadBtn) {
+  downloadBtn.disabled = true;
+  downloadBtn.addEventListener('click', async () => {
+    if (!lastGeneratedVideoUrl) return alert('No hay video generado para descargar.');
+    const filename = lastGeneratedVideoName || lastGeneratedVideoUrl.split('/').pop();
+
+    // Try simple anchor download first
+    try {
+      const a = document.createElement('a');
+      a.href = lastGeneratedVideoUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      return;
+    } catch (e) {
+      console.warn('Anchor download failed, falling back to fetch+blob', e);
+    }
+
+    // Fallback: fetch blob and download
+    try {
+      const resp = await fetch(lastGeneratedVideoUrl);
+      if (!resp.ok) throw new Error('download failed');
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Error al descargar el archivo.');
+      console.error(err);
+    }
   });
 }
 
