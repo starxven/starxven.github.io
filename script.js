@@ -24,7 +24,8 @@ function getTodayKey() {
 
 function getCurrentUser() {
   try {
-    return JSON.parse(localStorage.getItem(userKey) || 'null');
+    const raw = localStorage.getItem(userKey) || sessionStorage.getItem(userKey) || 'null';
+    return JSON.parse(raw);
   } catch {
     return null;
   }
@@ -38,9 +39,18 @@ function getAccounts() {
   }
 }
 
-function saveCurrentUser(username, email, plan = 'free', password = '') {
+function saveCurrentUser(username, email, plan = 'free', password = '', remember = true) {
   const user = { username, email, plan, password };
-  localStorage.setItem(userKey, JSON.stringify(user));
+  try {
+    if (remember) {
+      localStorage.setItem(userKey, JSON.stringify(user));
+    } else {
+      sessionStorage.setItem(userKey, JSON.stringify(user));
+    }
+  } catch (e) {
+    // Fallback to localStorage if sessionStorage fails
+    localStorage.setItem(userKey, JSON.stringify(user));
+  }
   updateAuthUI();
   return user;
 }
@@ -73,7 +83,18 @@ function setPlan(plan) {
   const user = getCurrentUser();
   if (user) {
     const updatedUser = { ...user, plan };
-    localStorage.setItem(userKey, JSON.stringify(updatedUser));
+    // preserve where the user was stored
+    try {
+      if (localStorage.getItem(userKey)) {
+        localStorage.setItem(userKey, JSON.stringify(updatedUser));
+      } else if (sessionStorage.getItem(userKey)) {
+        sessionStorage.setItem(userKey, JSON.stringify(updatedUser));
+      } else {
+        localStorage.setItem(userKey, JSON.stringify(updatedUser));
+      }
+    } catch {
+      localStorage.setItem(userKey, JSON.stringify(updatedUser));
+    }
     syncUserToAccounts(updatedUser.username, updatedUser.email, plan);
   } else {
     localStorage.setItem(planKey, plan);
@@ -292,7 +313,7 @@ if (signupForm) {
     }
 
     const user = syncUserToAccounts(username, email, 'free', '');
-    saveCurrentUser(user.username, user.email, user.plan, user.password || '');
+    saveCurrentUser(user.username, user.email, user.plan, user.password || '', true);
     showToast(`Registro completado. Bienvenido, ${username}.`);
     signupForm.reset();
   });
@@ -381,45 +402,47 @@ document.querySelectorAll('.plan-btn').forEach((button) => {
   });
 });
 
+// Login form: ahora solo email + contraseña y soporte para "Recuérdame"
 const loginForm = document.getElementById('loginForm');
 if (loginForm) {
   loginForm.addEventListener('submit', (event) => {
     event.preventDefault();
 
-    const usernameInput = document.getElementById('loginUsername');
     const emailInput = document.getElementById('loginEmail');
     const passwordInput = document.getElementById('loginPassword');
-    const username = usernameInput ? usernameInput.value.trim() : '';
+    const rememberCheckbox = document.getElementById('rememberMe');
     const email = emailInput ? emailInput.value.trim() : '';
     const password = passwordInput ? passwordInput.value.trim() : '';
+    const remember = rememberCheckbox ? Boolean(rememberCheckbox.checked) : true;
     const toast = document.getElementById('authToast');
 
-    if (!username || !email || !password) {
+    if (!email || !password) {
       if (toast) {
-        toast.textContent = 'Necesitas usuario, correo y contraseña para entrar.';
+        toast.textContent = 'Necesitas correo y contraseña para entrar.';
         toast.style.color = '#ffb7b7';
       }
       return;
     }
 
     const accounts = getAccounts();
+    // Buscar por email y contraseña (no por usuario)
     const account = accounts.find((entry) => {
-      return entry.username.toLowerCase() === username.toLowerCase()
-        && entry.email.toLowerCase() === email.toLowerCase()
+      return entry.email.toLowerCase() === email.toLowerCase()
         && entry.password === password;
     });
 
     if (!account) {
       if (toast) {
-        toast.textContent = 'Credenciales incorrectas. Comprueba usuario, correo y contraseña.';
+        toast.textContent = 'Credenciales incorrectas. Comprueba correo y contraseña.';
         toast.style.color = '#ffb7b7';
       }
       return;
     }
 
-    saveCurrentUser(account.username, account.email, account.plan || 'free', account.password || '');
+    // Guardar sesión según 'remember'
+    saveCurrentUser(account.username || '', account.email, account.plan || 'free', account.password || '', remember);
     if (toast) {
-      toast.textContent = `Hola, ${account.username}. Redirigiendo...`;
+      toast.textContent = `Hola, ${account.username || account.email}. Redirigiendo...`;
       toast.style.color = '#f1d8a2';
     }
 
@@ -480,7 +503,8 @@ if (registerForm) {
     }
 
     const user = syncUserToAccounts(username, email, 'free', password);
-    saveCurrentUser(user.username, user.email, user.plan, user.password || '');
+    // Por defecto al registrarse se recuerda la sesión (puedes cambiarlo si prefieres requerir login)
+    saveCurrentUser(user.username, user.email, user.plan, user.password || '', true);
     if (toast) {
       toast.textContent = `Cuenta creada para ${username}. Redirigiendo...`;
       toast.style.color = '#f1d8a2';
