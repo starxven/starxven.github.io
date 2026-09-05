@@ -47,12 +47,9 @@
 
         <div class="auth-panel active" id="loginPanel">
           <h2>Bienvenido de nuevo</h2>
-          <p>Accede con tu usuario, correo y contraseña para seguir generando contenido.</p>
+          <p>Accede con tu correo y contraseña para seguir generando contenido.</p>
 
           <form id="loginForm" class="auth-form">
-            <label for="loginUsername">Usuario</label>
-            <input id="loginUsername" type="text" placeholder="Tu usuario" required />
-
             <label for="loginEmail">Correo</label>
             <input id="loginEmail" type="email" placeholder="Tu correo" required />
 
@@ -60,6 +57,10 @@
             <div class="auth-password-group">
               <input id="loginPassword" type="password" placeholder="Tu contraseña" required />
               <button type="button" class="password-toggle" aria-label="Mostrar u ocultar contraseña">Mostrar</button>
+            </div>
+
+            <div class="auth-remember">
+              <label><input id="rememberMe" type="checkbox" /> Recuérdame en este dispositivo</label>
             </div>
 
             <button type="submit" class="btn btn-primary auth-submit">Entrar</button>
