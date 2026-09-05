@@ -399,7 +399,7 @@ document.querySelectorAll('.plan-btn').forEach((button) => {
     showToast(plan === 'premium'
       ? 'Premium activado para generar videos ilimitados.'
       : 'Has elegido el plan gratuito. Puedes generar 1 video al día.');
-});
+  });
 });
 
 // Login form: ahora solo email + contraseña y soporte para "Recuérdame"
@@ -446,10 +446,9 @@ if (loginForm) {
       toast.style.color = '#f1d8a2';
     }
 
-    setTimeout(() => {
-      window.location.href = 'dashboard.html';
-    }, 700);
-}
+    // Redirección inmediata sin guardar entrada en el historial
+    window.location.replace('dashboard.html');
+  });
 }
 
 const registerForm = document.getElementById('registerForm');
@@ -510,10 +509,9 @@ if (registerForm) {
       toast.style.color = '#f1d8a2';
     }
 
-    setTimeout(() => {
-      window.location.href = 'dashboard.html';
-    }, 700);
-}
+    // Redirección inmediata sin guardar entrada en el historial
+    window.location.replace('dashboard.html');
+  });
 }
 
 const authTabs = document.querySelectorAll('.auth-tab');
@@ -543,7 +541,7 @@ passwordToggles.forEach((toggle) => {
 
 const currentPage = window.location.pathname.split('/').pop();
 if (currentPage === 'login.html' && getCurrentUser()) {
-  window.location.href = 'dashboard.html';
+  window.location.replace('dashboard.html');
 }
 
 const contactForm = document.querySelector('.contact-form');
