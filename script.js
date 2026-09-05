@@ -324,34 +324,70 @@ if (generateBtn) {
   generateBtn.addEventListener('click', generateVideo);
 }
 
+// Upload helper — sends photo to backend for photo→video conversion
+async function uploadPhotoToServer(file, allowNSFW = false) {
+  const form = new FormData();
+  form.append('photo', file);
+  form.append('allow_nsfw', allowNSFW ? '1' : '0');
+
+  const endpoint = (window.location.hostname === 'localhost')
+    ? 'http://localhost:3000/api/photo-to-video'
+    : '/api/photo-to-video';
+
+  const resp = await fetch(endpoint, {
+    method: 'POST',
+    body: form
+  });
+  return resp.json();
+}
+
+// Quick-create buttons (with support for server-side photo->video)
 document.querySelectorAll('.quick-create-btn').forEach((button) => {
-  button.addEventListener('click', () => {
+  button.addEventListener('click', async () => {
     const kind = button.dataset.kind || 'video';
     const promptInput = document.getElementById('videoPrompt');
-    const photoInput = document.getElementById('photoInput');
+    const photoInputEl = document.getElementById('photoInput');
     const prompt = promptInput ? promptInput.value.trim() : '';
     const statusPill = document.getElementById('statusPill');
 
     if (kind === 'photo-video') {
-      const file = photoInput && photoInput.files ? photoInput.files[0] : null;
+      const file = photoInputEl && photoInputEl.files ? photoInputEl.files[0] : null;
       if (!file) {
         showToast('Sube una foto para convertirla en video.', true);
         return;
       }
 
-      if (statusPill) {
-        statusPill.textContent = 'Convirtiendo foto a video...';
-      }
+      const nsfwConsentEl = document.getElementById('nsfwConsent');
+      const allowNSFW = nsfwConsentEl && nsfwConsentEl.checked;
 
-      showToast('Convirtiendo foto a video...');
-
-      setTimeout(() => {
-        renderPreview('photo-video', prompt || 'Transformación de foto a video', file.name);
-        if (statusPill) {
-          statusPill.textContent = 'Video desde foto listo';
+      if (statusPill) statusPill.textContent = 'Subiendo foto...';
+      try {
+        const result = await uploadPhotoToServer(file, allowNSFW);
+        if (!result.ok) {
+          const err = result.error || 'unknown';
+          if (err === 'content-flagged') {
+            showToast('La imagen fue marcada por la moderación. Marca permiso NSFW solo si realmente eres mayor y es tu imagen.', true);
+          } else if (err === 'blocked-minor-content') {
+            showToast('Imagen bloqueada por política (contenido de menores).', true);
+          } else {
+            showToast('Error al procesar la imagen.', true);
+          }
+          if (statusPill) statusPill.textContent = 'Error';
+          return;
         }
-        showToast('Foto convertida en video. Ya puedes reutilizarla o exportarla.');
-      }, 1000);
+
+        const videoUrl = result.url;
+        const preview = document.getElementById('studioPreview');
+        if (preview) {
+          preview.innerHTML = `<video controls src="${videoUrl}" style="max-width:100%;border-radius:8px"></video>`;
+        }
+        if (statusPill) statusPill.textContent = 'Video desde foto listo';
+        showToast('Foto convertida en video. Puedes descargarla.');
+      } catch (e) {
+        console.error(e);
+        showToast('Error al convertir la foto.', true);
+        if (statusPill) statusPill.textContent = 'Error';
+      }
       return;
     }
 
