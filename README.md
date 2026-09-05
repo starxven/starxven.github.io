@@ -2,6 +2,8 @@
 
 Este proyecto permite describir una idea y generar un pack listo para un video: título, guion, estilo visual, prompt para imagen, prompt para video, archivo de texto y exportación a MP4.
 
+Última actualización: 2026-09-05T18:57:32Z
+
 ## Requisitos
 
 - Python 3.10+
