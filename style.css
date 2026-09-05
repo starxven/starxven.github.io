@@ -322,3 +322,81 @@ footer { position: relative; z-index: 1; }
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Dashboard / Studio theme customizations to match the gold branding --- */
+
+/* Make panel borders and accents use the gold tone */
+.panel-card {
+  border: 1px solid rgba(215, 175, 101, 0.12);
+  background: linear-gradient(180deg, rgba(12,16,22,0.6), rgba(10,14,20,0.55));
+}
+
+.sidebar-link {
+  border: 1px solid transparent;
+}
+
+.sidebar-badge {
+  background: rgba(215,175,101,0.12);
+  color: var(--gold);
+  border: 1px solid rgba(215,175,101,0.18);
+}
+
+.preview-frame {
+  border: 1px solid rgba(215,175,101,0.12);
+  background: linear-gradient(135deg, rgba(215,175,101,0.04), rgba(255,255,255,0.02));
+}
+
+.studio-preview strong,
+.preview-meta strong,
+.eyebrow,
+.brand-mark {
+  color: var(--gold);
+}
+
+.status-pill {
+  background: linear-gradient(135deg, rgba(215,175,101,0.12), rgba(255,255,255,0.02));
+  border: 1px solid rgba(215,175,101,0.16);
+  color: var(--gold-soft);
+  font-weight: 700;
+}
+
+#planTag {
+  background: linear-gradient(135deg, rgba(215,175,101,0.12), rgba(215,175,101,0.04));
+  border: 1px solid rgba(215,175,101,0.16);
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.quick-create-btn {
+  background: linear-gradient(135deg, rgba(215,175,101,0.06), rgba(255,255,255,0.01));
+  border: 1px solid rgba(215,175,101,0.08);
+  color: var(--gold-soft);
+}
+
+.preview-frame video,
+.preview-frame img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 8px;
+}
+
+#studioPreview {
+  color: var(--muted);
+}
+
+#studioPreview .studio-preview-label {
+  color: var(--gold);
+  font-weight: 800;
+}
+
+/* Hover states to emphasize brand color */
+.btn-secondary:hover {
+  box-shadow: 0 10px 30px rgba(215,175,101,0.08);
+  border-color: rgba(215,175,101,0.18);
+}
+
+.auth-tab.active,
+.btn-primary,
+.brand-mark {
+  box-shadow: var(--shadow);
+}
