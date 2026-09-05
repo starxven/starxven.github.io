@@ -100,7 +100,6 @@
               <span id="userNameLabel">Usuario</span>
             </div>
             <div class="status-pill" id="planTag">Plan: Gratis</div>
-            <button id="themeToggle" class="btn btn-secondary" type="button" aria-label="Cambiar tema">🌗</button>
             <button id="logoutBtn" class="btn btn-secondary" type="button">Cerrar sesión</button>
           </div>
         </header>
@@ -151,6 +150,10 @@
                     <label class="btn btn-secondary" style="display:inline-flex;align-items:center;gap:0.6rem;">
                       <input id="photoInput" type="file" accept="image/*" style="display:none;" />
                       Subir foto
+                    </label>
+                    <label style="display:inline-flex; align-items:center; gap:0.5rem; margin-left:0.6rem;">
+                      <input id="nsfwConsent" type="checkbox" />
+                      <span style="font-size:0.9rem;color:var(--muted);">Permito contenido NSFW (tengo +18 años)</span>
                     </label>
                     <button id="generateBtn" class="btn btn-primary">Crear con IA</button>
                     <button id="upgradeBtn" class="btn btn-secondary">Activar Premium</button>
@@ -239,58 +242,6 @@
         alert('Descarga simulada: en producción descargarías el archivo generado desde el servidor.');
       });
     }
-
-    // Theme toggle (persistente)
-    (function () {
-      const key = 'motionflow_theme';
-      const html = document.documentElement;
-      const toggle = document.getElementById('themeToggle');
-
-      function applyTheme(theme) {
-        if (theme === 'light') {
-          html.setAttribute('data-theme', 'light');
-        } else {
-          html.removeAttribute('data-theme');
-        }
-        try { localStorage.setItem(key, theme); } catch (e) {}
-        updateToggleIcon();
-      }
-
-      function currentTheme() {
-        return html.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-      }
-
-      function updateToggleIcon() {
-        if (!toggle) return;
-        const theme = currentTheme();
-        toggle.textContent = theme === 'light' ? '🌞' : '🌗';
-        toggle.setAttribute('aria-pressed', theme === 'light' ? 'true' : 'false');
-      }
-
-      // Inicializar desde preferencia guardada o preferencia del sistema
-      try {
-        const saved = localStorage.getItem(key);
-        if (saved === 'light' || saved === 'dark') {
-          applyTheme(saved);
-        } else {
-          const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-          applyTheme(prefersLight ? 'light' : 'dark');
-        }
-      } catch (e) {
-        // si localStorage no está disponible, respetamos preferencia del sistema
-        const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-        applyTheme(prefersLight ? 'light' : 'dark');
-      }
-
-      if (toggle) {
-        toggle.addEventListener('click', () => {
-          const next = currentTheme() === 'light' ? 'dark' : 'light';
-          applyTheme(next);
-        });
-        // Asegurar icono correcto al inicio
-        updateToggleIcon();
-      }
-    })();
 
     // Ensure UI reflects plan/usage
     updateAuthUI();
