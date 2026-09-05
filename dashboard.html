@@ -337,7 +337,7 @@
             <div class="prompt-panel">
               <div class="panel-card">
                 <label class="field-label" for="dashboardPrompt">Descripción del contenido</label>
-                <textarea id="dashboardPrompt" placeholder="Ej: Un producto premium de skincare con movimiento elegante, luz dorada y fondo oscuro.">Un producto premium de skincare con movimiento elegante, luz dorada y fondo oscuro.</textarea>
+                <textarea id="dashboardPrompt" placeholder="Ej: Un producto premium de skincare con movimiento elegante, luz dorada y fondo oscuro.">Un producto premium de skincare con movimiento[...]</textarea>
               </div>
 
               <div class="panel-card">
@@ -386,7 +386,8 @@
 
   <script src="script.js"></script>
   <script>
-    const user = JSON.parse(localStorage.getItem('motionflow_user') || 'null');
+    // Leer usuario desde localStorage o sessionStorage
+    const user = JSON.parse(localStorage.getItem('motionflow_user') || sessionStorage.getItem('motionflow_user') || 'null');
     const userNameLabel = document.getElementById('userNameLabel');
     if (userNameLabel) {
       userNameLabel.textContent = user ? user.username : 'Invitado';
@@ -395,10 +396,12 @@
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', () => {
-        localStorage.removeItem('motionflow_user');
-        localStorage.removeItem('motionflow_plan');
-        localStorage.removeItem('motionflow_usage');
-        localStorage.removeItem('motionflow_accounts');
+        // Limpiar almacenamiento tanto local como de sesión
+        const keys = ['motionflow_user', 'motionflow_plan', 'motionflow_usage', 'motionflow_accounts'];
+        keys.forEach(k => {
+          try { localStorage.removeItem(k); } catch (e) {}
+          try { sessionStorage.removeItem(k); } catch (e) {}
+        });
         window.location.href = 'login.html';
       });
     }
