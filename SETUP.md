@@ -11,7 +11,7 @@
 ### 1. Install Dependencies
 
 ```bash
-cd server
+cd backend
 npm install
 ```
 
@@ -34,7 +34,7 @@ PORT=3000
 ### 4. Start the Server
 
 ```bash
-cd server
+cd backend
 npm start
 ```
 
@@ -76,7 +76,7 @@ The dashboard (`dashboard.html`) is already configured to:
 npm i -g vercel
 
 # Deploy
-cd server
+cd backend
 vercel --prod
 ```
 
@@ -102,7 +102,7 @@ vercel --prod
 → Check `.env` file and make sure key is set correctly
 
 ### "Video generation timeout"
-→ Replicate API might be slow; increase timeout in `server/index.js` line ~54
+→ Replicate API might be slow; increase `REPLICATE_TIMEOUT_MS` in `backend/server.js` or env
 
 ### CORS errors in browser
 → CORS is already enabled; check browser console for actual error
@@ -166,7 +166,7 @@ Server health check.
 A: No, but you get free credits ($5/month). Video generation is fast and cheap (~$0.03 per 10s video).
 
 **Q: Can I use other AI models?**
-A: Yes! Replace the model version IDs in `server/index.js` with others from Replicate.
+A: Yes! Override the model env vars used by `backend/server.js`.
 
 **Q: How long does video generation take?**
 A: Typically 30-90 seconds depending on prompt complexity and queue.
