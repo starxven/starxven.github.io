@@ -268,33 +268,101 @@ function updatePreviewWithVideo(videoUrl, labelText = 'Video generado') {
 }
 
 const photoInput = document.getElementById('photoInput');
+const photoStage = document.getElementById('photoStage');
+const photoUploadArea = document.getElementById('photoUploadArea') || document.getElementById('uploadArea');
+const clearPhotoBtn = document.getElementById('clearPhotoBtn') || document.getElementById('clearImageBtn');
+const imagePreview = document.getElementById('imagePreview');
+const previewImg = document.getElementById('previewImg');
+
+function clearPhotoSelection() {
+  lastPhotoPreview = '';
+  if (photoInput) photoInput.value = '';
+  if (previewImg) previewImg.removeAttribute('src');
+  if (imagePreview) imagePreview.classList.remove('active');
+  if (photoUploadArea) photoUploadArea.style.display = '';
+  if (photoStage && photoUploadArea) photoStage.innerHTML = '';
+}
+
+function renderPhotoSelection(file, dataUrl) {
+  lastPhotoPreview = dataUrl;
+
+  if (previewImg) previewImg.src = dataUrl;
+  if (imagePreview) imagePreview.classList.add('active');
+  if (photoUploadArea) photoUploadArea.style.display = 'none';
+
+  if (photoStage) {
+    photoStage.innerHTML = `
+      <div class="photo-frame">
+        <img src="${dataUrl}" alt="Foto seleccionada para convertir en video" />
+      </div>
+      <div class="photo-caption">
+        <span class="photo-pill">Listo</span>
+        <strong>${file.name}</strong>
+      </div>
+    `;
+  }
+}
+
+function handlePhotoFile(file) {
+  if (!file || !file.type.startsWith('image/')) {
+    showToast('El archivo seleccionado debe ser una imagen.', true);
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    const result = event && event.target && event.target.result ? String(event.target.result) : '';
+    if (!result) return;
+    renderPhotoSelection(file, result);
+    showToast('Imagen lista para convertir en video.');
+  };
+  reader.readAsDataURL(file);
+}
+
 if (photoInput) {
   photoInput.addEventListener('change', () => {
     const file = photoInput.files && photoInput.files[0];
-    const photoStage = document.getElementById('photoStage');
-    if (!file || !photoStage) return;
+    if (!file) return;
+    handlePhotoFile(file);
+  });
+}
 
-    if (!file.type.startsWith('image/')) {
-      showToast('El archivo seleccionado debe ser una imagen.', true);
-      return;
+if (photoUploadArea && photoInput) {
+  photoUploadArea.addEventListener('click', () => {
+    photoInput.click();
+  });
+
+  photoUploadArea.addEventListener('dragover', (event) => {
+    event.preventDefault();
+    photoUploadArea.classList.add('dragover');
+  });
+
+  photoUploadArea.addEventListener('dragleave', () => {
+    photoUploadArea.classList.remove('dragover');
+  });
+
+  photoUploadArea.addEventListener('drop', (event) => {
+    event.preventDefault();
+    photoUploadArea.classList.remove('dragover');
+    const file = event.dataTransfer && event.dataTransfer.files ? event.dataTransfer.files[0] : null;
+    if (!file) return;
+
+    try {
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      photoInput.files = transfer.files;
+    } catch {
+      // Ignore assignment issues in browsers that restrict programmatic FileList updates.
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const result = event.target && event.target.result ? String(event.target.result) : '';
-      lastPhotoPreview = result;
-      photoStage.innerHTML = `
-        <div class="photo-frame">
-          <img src="${result}" alt="Foto seleccionada para convertir en video" />
-        </div>
-        <div class="photo-caption">
-          <span class="photo-pill">Listo</span>
-          <strong>${file.name}</strong>
-        </div>
-      `;
-      showToast('Imagen lista para convertir en video.');
-    };
-    reader.readAsDataURL(file);
+    handlePhotoFile(file);
+  });
+}
+
+if (clearPhotoBtn) {
+  clearPhotoBtn.addEventListener('click', (event) => {
+    event.preventDefault();
+    clearPhotoSelection();
   });
 }
 
@@ -382,6 +450,8 @@ if (generateBtn) {
 async function uploadPhotoToServer(file, allowNSFW = false) {
   const form = new FormData();
   form.append('photo', file);
+  form.append('image', file);
+  form.append('init_image', file);
   form.append('allow_nsfw', allowNSFW ? '1' : '0');
   form.append('prompt', 'Smooth animation and elegant motion');
 
