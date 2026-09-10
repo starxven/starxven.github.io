@@ -4,11 +4,16 @@ const express = require('express');
 const fs = require('fs');
 const multer = require('multer');
 const path = require('path');
-const { fetch } = require('undici');
+const dns = require('dns').promises;
+const net = require('net');
+const { Readable } = require('stream');
+const { pipeline } = require('stream/promises');
+const { Agent, fetch } = require('undici');
 require('dotenv').config();
 
 const app = express();
-app.set('trust proxy', true);
+app.set('trust proxy', process.env.TRUST_PROXY === '1');
+const directDispatcher = new Agent();
 
 const PORT = Number(process.env.PORT || 3000);
 const REPLICATE_API_KEY = String(process.env.REPLICATE_API_KEY || '').trim();
@@ -22,9 +27,16 @@ const ELEVEN_MODEL_ID = process.env.ELEVEN_MODEL_ID || 'eleven_multilingual_v2';
 const REPLICATE_TIMEOUT_MS = Number(process.env.REPLICATE_TIMEOUT_MS || 180000);
 const REPLICATE_POLL_INTERVAL_MS = Number(process.env.REPLICATE_POLL_INTERVAL_MS || 2500);
 const MAX_UPLOAD_MB = Number(process.env.MAX_UPLOAD_MB || 10);
+const MOCK_AI_PROVIDER = process.env.MOCK_AI_PROVIDER === '1';
 
 const GENERATED_DIR = path.join(__dirname, '..', 'generated');
 fs.mkdirSync(GENERATED_DIR, { recursive: true });
+const ASSET_PROXY_ALLOWED_HOSTS = String(
+  process.env.ASSET_PROXY_ALLOWED_HOSTS || '*.replicate.delivery,replicate.delivery,replicate.com'
+)
+  .split(',')
+  .map((value) => value.trim().toLowerCase())
+  .filter(Boolean);
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -103,6 +115,85 @@ function toProxyUrl(req, rawUrl) {
   return `${base}/api/assets?url=${encodeURIComponent(rawUrl)}`;
 }
 
+function isAllowedAssetHost(hostname) {
+  const normalized = String(hostname || '').trim().toLowerCase();
+  if (!normalized) return false;
+  return ASSET_PROXY_ALLOWED_HOSTS.some((rule) => {
+    if (rule.startsWith('*.')) {
+      const suffix = rule.slice(1);
+      return normalized.endsWith(suffix) && normalized.length > suffix.length;
+    }
+    return normalized === rule;
+  });
+}
+
+function isPrivateIpAddress(ip) {
+  if (!net.isIP(ip)) return true;
+
+  if (net.isIPv4(ip)) {
+    const [a, b] = ip.split('.').map(Number);
+    if (a === 10) return true;
+    if (a === 127) return true;
+    if (a === 0) return true;
+    if (a === 169 && b === 254) return true;
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a >= 224) return true;
+    return false;
+  }
+
+  const value = ip.toLowerCase();
+  return (
+    value === '::1' ||
+    value.startsWith('fe80:') ||
+    value.startsWith('fc') ||
+    value.startsWith('fd') ||
+    value.startsWith('::ffff:127.') ||
+    value.startsWith('::ffff:10.') ||
+    value.startsWith('::ffff:192.168.') ||
+    /^::ffff:172\.(1[6-9]|2\d|3[0-1])\./.test(value)
+  );
+}
+
+async function assertPublicResolvedHost(hostname) {
+  if (net.isIP(hostname)) {
+    if (isPrivateIpAddress(hostname)) {
+      const error = new Error('Resolved host is not public');
+      error.code = 'ASSET_HOST_PRIVATE_IP';
+      error.status = 403;
+      throw error;
+    }
+    return;
+  }
+
+  const records = await dns.lookup(hostname, { all: true, verbatim: true });
+  if (!Array.isArray(records) || records.length === 0) {
+    const error = new Error('Could not resolve asset host');
+    error.code = 'ASSET_HOST_UNRESOLVED';
+    error.status = 400;
+    throw error;
+  }
+
+  const invalid = records.find((record) => isPrivateIpAddress(record.address));
+  if (invalid) {
+    const error = new Error('Resolved host is not public');
+    error.code = 'ASSET_HOST_PRIVATE_IP';
+    error.status = 403;
+    throw error;
+  }
+}
+
+async function fetchUpstreamAsset(url, fetchImpl = fetch, dispatcher = directDispatcher) {
+  const upstream = await fetchImpl(url, { redirect: 'manual', dispatcher });
+  if (upstream.status >= 300 && upstream.status < 400) {
+    const error = new Error('Redirects are not allowed for proxied assets');
+    error.code = 'ASSET_REDIRECT_BLOCKED';
+    error.status = 403;
+    throw error;
+  }
+  return upstream;
+}
+
 async function replicateRequest(pathname, payload) {
   const response = await fetch(`https://api.replicate.com/v1${pathname}`, {
     method: 'POST',
@@ -179,6 +270,9 @@ async function runReplicateModel(model, input) {
 }
 
 async function generateVideoFromPrompt(prompt, duration) {
+  if (MOCK_AI_PROVIDER) {
+    return `https://replicate.delivery/mock/video-${Date.now()}.mp4`;
+  }
   const prediction = await runReplicateModel(REPLICATE_TEXT_TO_VIDEO_MODEL, {
     prompt,
     duration: clampDuration(duration)
@@ -193,6 +287,9 @@ async function generateVideoFromPrompt(prompt, duration) {
 }
 
 async function generateImageFromPrompt(prompt) {
+  if (MOCK_AI_PROVIDER) {
+    return `https://replicate.delivery/mock/image-${encodeURIComponent(prompt.slice(0, 24))}.png`;
+  }
   const prediction = await runReplicateModel(REPLICATE_TEXT_TO_IMAGE_MODEL, { prompt });
   const outputUrl = firstUrl(prediction?.output);
   if (!outputUrl) {
@@ -204,6 +301,9 @@ async function generateImageFromPrompt(prompt) {
 }
 
 async function generateVideoFromPhoto(photoDataUri, prompt, allowNsfw) {
+  if (MOCK_AI_PROVIDER) {
+    return `https://replicate.delivery/mock/photo-video-${Date.now()}.mp4`;
+  }
   const prediction = await runReplicateModel(REPLICATE_IMAGE_TO_VIDEO_MODEL, {
     image: photoDataUri,
     prompt,
@@ -219,6 +319,13 @@ async function generateVideoFromPhoto(photoDataUri, prompt, allowNsfw) {
 }
 
 async function generateTts(text, voiceId, format) {
+  if (MOCK_AI_PROVIDER) {
+    const extension = String(format || ELEVEN_DEFAULT_FORMAT).startsWith('pcm') ? 'pcm' : 'mp3';
+    const filename = `tts-${crypto.randomUUID()}.${extension}`;
+    fs.writeFileSync(path.join(GENERATED_DIR, filename), Buffer.from(`MOCK:${text}:${voiceId || ELEVEN_DEFAULT_VOICE_ID}`));
+    return filename;
+  }
+
   if (!ELEVEN_API_KEY) {
     const error = new Error('ELEVEN_API_KEY is not configured');
     error.code = 'MISSING_ELEVEN_API_KEY';
@@ -293,8 +400,20 @@ app.get('/api/assets', async (req, res) => {
     return fail(res, 400, 'A valid asset URL is required', 'INVALID_ASSET_URL');
   }
 
+  let parsedUrl;
   try {
-    const upstream = await fetch(assetUrl);
+    parsedUrl = new URL(assetUrl);
+  } catch {
+    return fail(res, 400, 'A valid asset URL is required', 'INVALID_ASSET_URL');
+  }
+
+  if (!isAllowedAssetHost(parsedUrl.hostname)) {
+    return fail(res, 403, 'Asset host not allowed', 'ASSET_HOST_FORBIDDEN');
+  }
+
+  try {
+    await assertPublicResolvedHost(parsedUrl.hostname);
+    const upstream = await fetchUpstreamAsset(parsedUrl.toString());
     if (!upstream.ok) {
       return fail(res, 502, `Upstream returned ${upstream.status}`, 'ASSET_FETCH_FAILED');
     }
@@ -303,7 +422,12 @@ app.get('/api/assets', async (req, res) => {
     res.setHeader('Content-Type', contentType);
     if (contentLength) res.setHeader('Content-Length', contentLength);
     res.setHeader('Cache-Control', 'public, max-age=3600');
-    res.status(200).send(Buffer.from(await upstream.arrayBuffer()));
+    if (!upstream.body) {
+      return fail(res, 502, 'Asset response body is empty', 'ASSET_EMPTY_BODY');
+    }
+    res.status(200);
+    await pipeline(Readable.fromWeb(upstream.body), res);
+    return undefined;
   } catch (error) {
     const parsed = errorToResponse(error);
     return fail(res, parsed.status, parsed.message, parsed.code);
@@ -395,8 +519,17 @@ app.use((error, _req, res, _next) => {
   return fail(res, parsed.status, parsed.message, parsed.code);
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend listening on http://localhost:${PORT}`);
-  console.log(`REPLICATE_API_KEY: ${REPLICATE_API_KEY ? 'configured' : 'missing'}`);
-  console.log(`ELEVEN_API_KEY: ${ELEVEN_API_KEY ? 'configured' : 'missing'}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Backend listening on http://localhost:${PORT}`);
+    console.log(`REPLICATE_API_KEY: ${REPLICATE_API_KEY ? 'configured' : 'missing'}`);
+    console.log(`ELEVEN_API_KEY: ${ELEVEN_API_KEY ? 'configured' : 'missing'}`);
+  });
+}
+
+module.exports = {
+  app,
+  __internals: {
+    fetchUpstreamAsset
+  }
+};
