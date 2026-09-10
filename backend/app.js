@@ -8,14 +8,8 @@ const dotenv = require('dotenv');
 dotenv.config({ path: path.join(__dirname, '.env') });
 dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
-const {
-  HttpError,
-  generateImageFromPrompt,
-  generateSpeech,
-  generateVideoFromPhoto,
-  generateVideoFromPrompt,
-  getHealthSummary
-} = require('./lib/ai-service');
+const aiService = require('./lib/ai-service');
+const { HttpError } = aiService;
 
 const GENERATED_DIR = path.join(__dirname, 'generated');
 fs.mkdirSync(GENERATED_DIR, { recursive: true });
@@ -29,7 +23,7 @@ const upload = multer({
 });
 const uploadPhoto = upload.single('photo');
 
-function createApp() {
+function createApp({ services = aiService } = {}) {
   const app = express();
   const trustProxy = getTrustProxySetting();
   if (trustProxy !== false) {
@@ -55,14 +49,14 @@ function createApp() {
   }));
 
   app.get('/health', (_req, res) => {
-    res.json(getHealthSummary());
+    res.json(services.getHealthSummary());
   });
 
   async function handleGenerateVideo(req, res, next) {
     try {
       const prompt = requireText(req.body?.prompt, 'prompt');
       const duration = parseDuration(req.body?.duration);
-      const result = await generateVideoFromPrompt({ prompt, duration, baseUrl: getBaseUrl(req) });
+      const result = await services.generateVideoFromPrompt({ prompt, duration, baseUrl: getBaseUrl(req) });
       res.json({ ok: true, url: result.url });
     } catch (error) {
       next(error);
@@ -75,7 +69,7 @@ function createApp() {
   app.post('/api/generate-image', async (req, res, next) => {
     try {
       const prompt = requireText(req.body?.prompt, 'prompt');
-      const result = await generateImageFromPrompt({ prompt, baseUrl: getBaseUrl(req) });
+      const result = await services.generateImageFromPrompt({ prompt, baseUrl: getBaseUrl(req) });
       res.json({ ok: true, url: result.url });
     } catch (error) {
       next(error);
@@ -93,7 +87,7 @@ function createApp() {
         throw new HttpError(400, 'photo is required', 'VALIDATION_ERROR');
       }
 
-      const result = await generateVideoFromPhoto({
+      const result = await services.generateVideoFromPhoto({
         prompt,
         duration,
         image,
@@ -112,7 +106,7 @@ function createApp() {
       const text = requireText(req.body?.text, 'text');
       const voiceId = optionalText(req.body?.voiceId);
       const format = sanitizeFormat(optionalText(req.body?.format) || 'mp3_44100_128');
-      const result = await generateSpeech({ text, voiceId, format, baseUrl: getBaseUrl(req) });
+      const result = await services.generateSpeech({ text, voiceId, format, baseUrl: getBaseUrl(req) });
       res.json({ ok: true, url: result.url });
     } catch (error) {
       next(error);
@@ -175,8 +169,8 @@ function optionalText(value) {
 function parseDuration(value, fallback = 10) {
   if (value == null || value === '') return fallback;
   const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 60) {
-    throw new HttpError(400, 'duration must be a number between 1 and 60', 'VALIDATION_ERROR');
+  if (!Number.isInteger(parsed) || parsed <= 0 || parsed > 60) {
+    throw new HttpError(400, 'duration must be an integer between 1 and 60', 'VALIDATION_ERROR');
   }
   return parsed;
 }

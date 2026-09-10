@@ -5,17 +5,6 @@ const { randomUUID } = require('crypto');
 const GENERATED_DIR = path.join(__dirname, '..', 'generated');
 fs.mkdirSync(GENERATED_DIR, { recursive: true });
 
-const REPLICATE_API_BASE_URL = stripTrailingSlash(process.env.REPLICATE_API_BASE_URL || 'https://api.replicate.com/v1');
-const REPLICATE_API_KEY = String(process.env.REPLICATE_API_KEY || '').trim();
-const ELEVENLABS_API_BASE_URL = stripTrailingSlash(process.env.ELEVENLABS_API_BASE_URL || 'https://api.elevenlabs.io/v1');
-const ELEVENLABS_API_KEY = String(process.env.ELEVENLABS_API_KEY || process.env.ELEVEN_API_KEY || '').trim();
-const DEFAULT_ELEVENLABS_VOICE_ID = String(
-  process.env.ELEVENLABS_DEFAULT_VOICE_ID || process.env.ELEVEN_DEFAULT_VOICE_ID || '21m00Tcm4TlvDq8ikWAM'
-).trim();
-const DEFAULT_ELEVENLABS_MODEL_ID = String(process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2').trim();
-const REPLICATE_TIMEOUT_MS = toClampedInteger(process.env.REPLICATE_TIMEOUT_MS, 180000, 10000, 600000);
-const REPLICATE_POLL_INTERVAL_MS = toClampedInteger(process.env.REPLICATE_POLL_INTERVAL_MS, 2000, 500, 10000);
-
 const DEFAULT_REPLICATE_TEMPLATES = {
   video: {
     prompt: '{{prompt}}',
@@ -60,6 +49,38 @@ function trimOrEmpty(value) {
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function getReplicateApiBaseUrl() {
+  return stripTrailingSlash(process.env.REPLICATE_API_BASE_URL || 'https://api.replicate.com/v1');
+}
+
+function getReplicateApiKey() {
+  return trimOrEmpty(process.env.REPLICATE_API_KEY);
+}
+
+function getElevenLabsApiBaseUrl() {
+  return stripTrailingSlash(process.env.ELEVENLABS_API_BASE_URL || 'https://api.elevenlabs.io/v1');
+}
+
+function getElevenLabsApiKey() {
+  return trimOrEmpty(process.env.ELEVENLABS_API_KEY || process.env.ELEVEN_API_KEY);
+}
+
+function getDefaultElevenLabsVoiceId() {
+  return trimOrEmpty(process.env.ELEVENLABS_DEFAULT_VOICE_ID || process.env.ELEVEN_DEFAULT_VOICE_ID || '21m00Tcm4TlvDq8ikWAM');
+}
+
+function getDefaultElevenLabsModelId() {
+  return trimOrEmpty(process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2');
+}
+
+function getReplicateTimeoutMs() {
+  return toClampedInteger(process.env.REPLICATE_TIMEOUT_MS, 180000, 10000, 600000);
+}
+
+function getReplicatePollIntervalMs() {
+  return toClampedInteger(process.env.REPLICATE_POLL_INTERVAL_MS, 2000, 500, 10000);
 }
 
 function getReplicateConfig(kind) {
@@ -119,18 +140,20 @@ function getHealthSummary() {
   const videoConfig = getReplicateConfig('video');
   const imageConfig = getReplicateConfig('image');
   const photoConfig = getReplicateConfig('photoToVideo');
+  const replicateApiKey = getReplicateApiKey();
+  const elevenLabsApiKey = getElevenLabsApiKey();
 
   return {
     ok: true,
     status: 'ok',
-    api_configured: Boolean(REPLICATE_API_KEY || ELEVENLABS_API_KEY),
+    api_configured: Boolean(replicateApiKey || elevenLabsApiKey),
     services: {
-      replicate: Boolean(REPLICATE_API_KEY),
-      elevenlabs: Boolean(ELEVENLABS_API_KEY),
-      video: Boolean(REPLICATE_API_KEY && (videoConfig.model || videoConfig.version)),
-      image: Boolean(REPLICATE_API_KEY && (imageConfig.model || imageConfig.version)),
-      photoToVideo: Boolean(REPLICATE_API_KEY && (photoConfig.model || photoConfig.version)),
-      tts: Boolean(ELEVENLABS_API_KEY)
+      replicate: Boolean(replicateApiKey),
+      elevenlabs: Boolean(elevenLabsApiKey),
+      video: Boolean(replicateApiKey && (videoConfig.model || videoConfig.version)),
+      image: Boolean(replicateApiKey && (imageConfig.model || imageConfig.version)),
+      photoToVideo: Boolean(replicateApiKey && (photoConfig.model || photoConfig.version)),
+      tts: Boolean(elevenLabsApiKey)
     }
   };
 }
@@ -152,23 +175,24 @@ async function generateVideoFromPhoto({ prompt, duration, image, allowNsfw, base
 }
 
 async function generateSpeech({ text, voiceId, format, baseUrl }) {
-  if (!ELEVENLABS_API_KEY) {
+  const elevenLabsApiKey = getElevenLabsApiKey();
+  if (!elevenLabsApiKey) {
     throw new HttpError(503, 'ELEVENLABS_API_KEY is not configured', 'PROVIDER_NOT_CONFIGURED');
   }
 
-  const resolvedVoiceId = trimOrEmpty(voiceId) || DEFAULT_ELEVENLABS_VOICE_ID;
+  const resolvedVoiceId = trimOrEmpty(voiceId) || getDefaultElevenLabsVoiceId();
   const outputFormat = trimOrEmpty(format) || 'mp3_44100_128';
-  const url = `${ELEVENLABS_API_BASE_URL}/text-to-speech/${encodeURIComponent(resolvedVoiceId)}?output_format=${encodeURIComponent(outputFormat)}`;
+  const url = `${getElevenLabsApiBaseUrl()}/text-to-speech/${encodeURIComponent(resolvedVoiceId)}?output_format=${encodeURIComponent(outputFormat)}`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'audio/mpeg',
-      'xi-api-key': ELEVENLABS_API_KEY
+      'xi-api-key': elevenLabsApiKey
     },
     body: JSON.stringify({
       text,
-      model_id: DEFAULT_ELEVENLABS_MODEL_ID
+      model_id: getDefaultElevenLabsModelId()
     })
   });
 
@@ -186,7 +210,7 @@ async function generateSpeech({ text, voiceId, format, baseUrl }) {
 }
 
 async function generateReplicateAsset(kind, context, assetOptions) {
-  if (!REPLICATE_API_KEY) {
+  if (!getReplicateApiKey()) {
     throw new HttpError(503, 'REPLICATE_API_KEY is not configured', 'PROVIDER_NOT_CONFIGURED');
   }
 
@@ -220,10 +244,10 @@ async function generateReplicateAsset(kind, context, assetOptions) {
 }
 
 async function createPrediction(payload) {
-  const response = await fetch(`${REPLICATE_API_BASE_URL}/predictions`, {
+  const response = await fetch(`${getReplicateApiBaseUrl()}/predictions`, {
     method: 'POST',
     headers: {
-      Authorization: `Token ${REPLICATE_API_KEY}`,
+      Authorization: `Token ${getReplicateApiKey()}`,
       'Content-Type': 'application/json',
       Prefer: 'wait=60'
     },
@@ -250,17 +274,17 @@ async function waitForPrediction(prediction) {
       throw new HttpError(502, current.error || `Generation ${current.status}`, 'REPLICATE_PREDICTION_FAILED', current);
     }
 
-    if (Date.now() - startedAt > REPLICATE_TIMEOUT_MS) {
+    if (Date.now() - startedAt > getReplicateTimeoutMs()) {
       throw new HttpError(504, 'Generation timed out while waiting for the provider', 'PROVIDER_TIMEOUT', {
         predictionId: current.id,
         status: current.status
       });
     }
 
-    await delay(REPLICATE_POLL_INTERVAL_MS);
+    await delay(getReplicatePollIntervalMs());
     const pollUrl = current.urls && current.urls.get
       ? current.urls.get
-      : `${REPLICATE_API_BASE_URL}/predictions/${encodeURIComponent(current.id)}`;
+      : `${getReplicateApiBaseUrl()}/predictions/${encodeURIComponent(current.id)}`;
 
     current = await pollPrediction(pollUrl);
   }
@@ -271,7 +295,7 @@ async function waitForPrediction(prediction) {
 async function pollPrediction(url) {
   const response = await fetch(url, {
     headers: {
-      Authorization: `Token ${REPLICATE_API_KEY}`
+      Authorization: `Token ${getReplicateApiKey()}`
     }
   });
 

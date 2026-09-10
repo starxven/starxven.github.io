@@ -1,9 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createApp } = require('../app');
+const aiService = require('../lib/ai-service');
 
-async function withServer(run) {
-  const app = createApp();
+async function withServer(run, appOptions) {
+  const app = createApp(appOptions);
   const server = app.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
 
@@ -75,6 +76,8 @@ test('POST /api/photo-to-video requires a photo source', async () => {
 });
 
 test('POST /api/photo-to-video accepts JSON data URL payloads', async () => {
+  const calls = [];
+
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/photo-to-video`, {
       method: 'POST',
@@ -85,14 +88,24 @@ test('POST /api/photo-to-video accepts JSON data URL payloads', async () => {
       })
     });
 
-    assert.equal(response.status, 503);
+    assert.equal(response.status, 200);
     const payload = await response.json();
-    assert.equal(payload.ok, false);
-    assert.equal(payload.code, 'PROVIDER_NOT_CONFIGURED');
+    assert.equal(payload.ok, true);
+    assert.equal(calls[0].image, 'data:image/png;base64,ZmFrZQ==');
+  }, {
+    services: {
+      ...aiService,
+      async generateVideoFromPhoto(args) {
+        calls.push(args);
+        return { url: 'http://example.test/generated/photo.mp4' };
+      }
+    }
   });
 });
 
 test('POST /api/photo-to-video accepts imageData aliases', async () => {
+  const calls = [];
+
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/photo-to-video`, {
       method: 'POST',
@@ -103,10 +116,18 @@ test('POST /api/photo-to-video accepts imageData aliases', async () => {
       })
     });
 
-    assert.equal(response.status, 503);
+    assert.equal(response.status, 200);
     const payload = await response.json();
-    assert.equal(payload.ok, false);
-    assert.equal(payload.code, 'PROVIDER_NOT_CONFIGURED');
+    assert.equal(payload.ok, true);
+    assert.equal(calls[0].image, 'data:image/png;base64,ZmFrZQ==');
+  }, {
+    services: {
+      ...aiService,
+      async generateVideoFromPhoto(args) {
+        calls.push(args);
+        return { url: 'http://example.test/generated/photo.mp4' };
+      }
+    }
   });
 });
 
