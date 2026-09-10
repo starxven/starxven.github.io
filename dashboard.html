@@ -231,7 +231,7 @@
     .image-preview { margin-top: 16px; display: none; }
     .image-preview.active { display: block; }
     .preview-image { width: 100%; max-height: 200px; border-radius: 12px; object-fit: cover; margin-bottom: 12px; border: 1px solid var(--line); }
-    .clear-image-btn { width: 100%; padding: 8px; background: rgba(255, 102, 102, 0.15); border: 1px solid rgba(255, 102, 102, 0.3); color: var(--red); border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s ease; }
+    .clear-image-btn { width: 100%; padding: 8px; background: rgba(255, 102, 102, 0.15); border: 1px solid rgba(255, 102, 102, 0.3); color: var(--red); border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; }
     .clear-image-btn:hover { background: rgba(255, 102, 102, 0.25); }
 
     .preview-panel { display: flex; flex-direction: column; gap: 20px; height: fit-content; }
@@ -268,9 +268,9 @@
     .download-btn { width: 100%; padding: 12px; margin-bottom: 8px; }
     .loading-spinner { display: inline-block; width: 20px; height: 20px; border: 2px solid rgba(101, 217, 255, 0.3); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .generating-status { display: none; align-items: center; gap: 12px; padding: 12px; background: rgba(101, 217, 255, 0.1); border: 1px solid rgba(101, 217, 255, 0.2); border-radius: 10px; color: var(--cyan); font-weight: 600; margin-bottom: 12px; }
+    .generating-status { display: none; align-items: center; gap: 12px; padding: 12px; background: rgba(101, 217, 255, 0.1); border: 1px solid rgba(101, 217, 255, 0.2); border-radius: 10px; color: var(--cyan); font-weight: 600; font-size: 0.9rem; }
     .generating-status.active { display: flex; }
-    .duration-display { position: absolute; top: 10px; right: 10px; background: rgba(0, 0, 0, 0.6); color: var(--cyan); padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; backdrop-filter: blur(10px); }
+    .duration-display { position: absolute; top: 10px; right: 10px; background: rgba(0, 0, 0, 0.6); color: var(--cyan); padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; }
 
     @media (max-width: 1024px) {
       .dashboard-grid { grid-template-columns: 1fr; }
@@ -441,7 +441,26 @@
     </div>
   </main>
 
+  <script src="./config.js"></script>
   <script>
+    // Helper functions to resolve API base URL
+    function getApiBaseUrl() {
+      const hostname = window.location.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://localhost:3000';
+      }
+      
+      // Use config.js value in production
+      const configUrl = window.APP_CONFIG?.API_BASE_URL || '';
+      return configUrl.replace(/\/+$/, ''); // Remove trailing slashes
+    }
+
+    function buildApiUrl(path) {
+      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+      const apiBaseUrl = getApiBaseUrl();
+      return apiBaseUrl ? `${apiBaseUrl}${normalizedPath}` : normalizedPath;
+    }
+
     const userNameLabel = document.getElementById('userNameLabel');
     const user = JSON.parse(localStorage.getItem('motionflow_user') || sessionStorage.getItem('motionflow_user') || 'null');
     if (userNameLabel && user) userNameLabel.textContent = user.username || 'Usuario';
@@ -589,9 +608,9 @@
 
       try {
         const durationVal = parseInt(videoDuration && videoDuration.value ? videoDuration.value : '10', 10) || 10;
-        const endpoint = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-          ? 'http://localhost:3000/api/generate'
-          : '/api/generate';
+        const endpoint = buildApiUrl('/api/generate');
+
+        console.log('📤 Enviando solicitud a:', endpoint);
 
         const payload = {
           prompt,
@@ -610,6 +629,8 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
+
+        console.log('📥 Respuesta:', resp.status);
 
         if (!resp.ok) {
           const txt = await resp.text();
@@ -660,6 +681,7 @@
     });
 
     console.log('✅ Dashboard cargado correctamente');
+    console.log('🔧 API Base URL configurada:', getApiBaseUrl());
   </script>
 </body>
 </html>
