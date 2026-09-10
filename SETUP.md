@@ -63,9 +63,12 @@ Response (example):
 ## Frontend Integration
 
 The dashboard (`dashboard.html`) is already configured to:
-- Call `/api/generate` for text-to-video
+- Load `config.js` before the dashboard script runs
+- Call `http://localhost:3000/api/generate` during local development (`localhost` / `127.0.0.1`)
+- Call `${window.APP_CONFIG.API_BASE_URL}/api/generate` outside local development
 - Call `/api/generate-image` for image generation
 - Call `/api/photo-to-video` for photo conversion
+- Show a visible warning and stop requests if `config.js` is missing, relative, or points back to the GitHub Pages origin
 
 ## Deployment
 
