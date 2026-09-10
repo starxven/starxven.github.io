@@ -27,6 +27,7 @@ const upload = multer({
     files: 1
   }
 });
+const uploadPhoto = upload.single('photo');
 
 function createApp() {
   const app = express();
@@ -81,7 +82,7 @@ function createApp() {
     }
   });
 
-  app.post('/api/photo-to-video', upload.single('photo'), async (req, res, next) => {
+  app.post('/api/photo-to-video', parsePhotoRequest, async (req, res, next) => {
     try {
       const prompt = optionalText(req.body?.prompt) || 'Smooth animation and elegant motion';
       const duration = parseDuration(req.body?.duration, 5);
@@ -148,6 +149,15 @@ function getBaseUrl(req) {
   const protocol = req.protocol;
   const host = req.get('host') || `localhost:${process.env.PORT || 3000}`;
   return `${protocol}://${host}`;
+}
+
+function parsePhotoRequest(req, res, next) {
+  if (req.is('multipart/form-data')) {
+    uploadPhoto(req, res, next);
+    return;
+  }
+
+  next();
 }
 
 function requireText(value, fieldName) {

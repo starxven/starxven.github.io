@@ -7,4 +7,4 @@ npm install
 npm start
 ```
 
-Environment variables are loaded from `backend/.env` first and the repository root `.env` second.
+Environment variables are loaded from `backend/.env` first; the repository root `.env` is loaded second only as a fallback for values that are still missing.

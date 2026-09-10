@@ -74,6 +74,24 @@ test('POST /api/photo-to-video requires a photo source', async () => {
   });
 });
 
+test('POST /api/photo-to-video accepts JSON data URL payloads', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/photo-to-video`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: 'Animate this',
+        photoData: 'data:image/png;base64,ZmFrZQ=='
+      })
+    });
+
+    assert.equal(response.status, 503);
+    const payload = await response.json();
+    assert.equal(payload.ok, false);
+    assert.equal(payload.code, 'PROVIDER_NOT_CONFIGURED');
+  });
+});
+
 test('POST /api/tts rejects unsafe format values', async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/tts`, {
