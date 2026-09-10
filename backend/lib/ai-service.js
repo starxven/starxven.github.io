@@ -334,6 +334,7 @@ function extractAssetUrl(output) {
 }
 
 async function downloadRemoteAsset(sourceUrl, options) {
+  validateProviderAssetUrl(sourceUrl);
   const response = await fetch(sourceUrl);
   if (!response.ok) {
     throw new HttpError(502, 'Generated asset could not be downloaded from the provider', 'ASSET_DOWNLOAD_FAILED', {
@@ -348,6 +349,30 @@ async function downloadRemoteAsset(sourceUrl, options) {
     sourceUrl,
     contentType: response.headers.get('content-type') || undefined
   });
+}
+
+function validateProviderAssetUrl(sourceUrl) {
+  let parsedUrl;
+
+  try {
+    parsedUrl = new URL(sourceUrl);
+  } catch (_error) {
+    throw new HttpError(502, 'Provider returned an invalid asset URL', 'INVALID_PROVIDER_RESPONSE');
+  }
+
+  if (parsedUrl.protocol !== 'https:') {
+    throw new HttpError(502, 'Provider asset URL must use HTTPS', 'INVALID_PROVIDER_RESPONSE');
+  }
+
+  const hostname = parsedUrl.hostname.toLowerCase();
+  const allowedHosts = getAllowedProviderAssetHosts();
+  const isAllowed = allowedHosts.some((candidate) => hostnameMatches(candidate, hostname));
+
+  if (!isAllowed) {
+    throw new HttpError(502, 'Provider returned an asset URL from an untrusted host', 'INVALID_PROVIDER_RESPONSE', {
+      hostname
+    });
+  }
 }
 
 function persistBufferAsset(buffer, { baseUrl, contentType, prefix, preferredExtension, sourceUrl }) {
@@ -410,6 +435,27 @@ function inferAudioExtension(format) {
   if (normalized.startsWith('ulaw')) return 'ulaw';
   if (normalized.startsWith('pcm')) return 'pcm';
   return 'mp3';
+}
+
+function getAllowedProviderAssetHosts() {
+  const configured = trimOrEmpty(process.env.ALLOWED_PROVIDER_ASSET_HOSTS);
+  if (configured) {
+    return configured
+      .split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  return ['replicate.delivery', '*.replicate.delivery'];
+}
+
+function hostnameMatches(candidate, hostname) {
+  if (candidate.startsWith('*.')) {
+    const suffix = candidate.slice(2);
+    return hostname === suffix || hostname.endsWith(`.${suffix}`);
+  }
+
+  return hostname === candidate;
 }
 
 async function createProviderError(response, code, fallbackMessage) {

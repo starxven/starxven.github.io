@@ -131,6 +131,34 @@ test('POST /api/photo-to-video accepts imageData aliases', async () => {
   });
 });
 
+test('POST /api/photo-to-video forwards multipart uploads', async () => {
+  const calls = [];
+
+  await withServer(async (baseUrl) => {
+    const form = new FormData();
+    form.append('prompt', 'Animate this');
+    form.append('photo', new Blob(['fake-image'], { type: 'image/png' }), 'photo.png');
+
+    const response = await fetch(`${baseUrl}/api/photo-to-video`, {
+      method: 'POST',
+      body: form
+    });
+
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.ok, true);
+    assert.match(calls[0].image, /^data:image\/png;base64,/);
+  }, {
+    services: {
+      ...aiService,
+      async generateVideoFromPhoto(args) {
+        calls.push(args);
+        return { url: 'http://example.test/generated/photo.mp4' };
+      }
+    }
+  });
+});
+
 test('POST /api/tts rejects unsafe format values', async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/tts`, {

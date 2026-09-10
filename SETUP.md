@@ -24,6 +24,7 @@ Minimum settings:
 REPLICATE_API_KEY=your_replicate_key
 PORT=3000
 CORS_ORIGIN=http://localhost:8080
+ALLOWED_PROVIDER_ASSET_HOSTS=replicate.delivery,*.replicate.delivery
 REPLICATE_VIDEO_MODEL=your_text_to_video_model
 REPLICATE_PHOTO_TO_VIDEO_MODEL=your_image_to_video_model
 ```

@@ -217,6 +217,10 @@ function isAllowedOrigin(origin) {
     return configuredOrigins.includes(origin);
   }
 
+  if (process.env.NODE_ENV === 'production') {
+    return false;
+  }
+
   return origin === 'null'
     || origin === 'http://localhost:3000'
     || origin === 'http://127.0.0.1:3000'
