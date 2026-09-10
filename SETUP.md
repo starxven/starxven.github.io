@@ -23,6 +23,7 @@ Minimum settings:
 ```env
 REPLICATE_API_KEY=your_replicate_key
 PORT=3000
+CORS_ORIGIN=http://localhost:8080
 REPLICATE_VIDEO_MODEL=your_text_to_video_model
 REPLICATE_PHOTO_TO_VIDEO_MODEL=your_image_to_video_model
 ```
@@ -105,7 +106,7 @@ Request:
 
 ### POST /api/photo-to-video
 
-Accepts either multipart form data with a `photo` file field or JSON with `photoData` / `imageData` / `photoUrl` / `imageUrl`, plus optional `prompt`, `duration`, and NSFW flags.
+Accepts either multipart form data with a `photo` file field or JSON with a `photoData` / `imageData` data URL, plus optional `prompt`, `duration`, and NSFW flags.
 
 ### POST /api/tts
 

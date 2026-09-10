@@ -10,6 +10,7 @@ npm start
 Then configure the provider-specific values in `backend/.env`:
 
 - `REPLICATE_API_KEY`
+- `CORS_ORIGIN`
 - `REPLICATE_VIDEO_MODEL`
 - `REPLICATE_PHOTO_TO_VIDEO_MODEL`
 - optional `ELEVEN_API_KEY`

@@ -44,6 +44,21 @@ test('POST /api/generate validates missing prompt', async () => {
   });
 });
 
+test('POST /api/generate-video validates missing prompt', async () => {
+  await withServer(async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/generate-video`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ duration: 5 })
+    });
+
+    assert.equal(response.status, 400);
+    const payload = await response.json();
+    assert.equal(payload.ok, false);
+    assert.equal(payload.code, 'VALIDATION_ERROR');
+  });
+});
+
 test('POST /api/photo-to-video requires a photo source', async () => {
   await withServer(async (baseUrl) => {
     const response = await fetch(`${baseUrl}/api/photo-to-video`, {

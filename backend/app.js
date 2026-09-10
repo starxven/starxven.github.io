@@ -30,9 +30,21 @@ const upload = multer({
 
 function createApp() {
   const app = express();
-  app.set('trust proxy', true);
+  const trustProxy = getTrustProxySetting();
+  if (trustProxy !== false) {
+    app.set('trust proxy', trustProxy);
+  }
 
-  app.use(cors({ origin: true }));
+  app.use(cors({
+    origin(origin, callback) {
+      if (!origin || isAllowedOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new HttpError(403, 'Origin not allowed', 'CORS_NOT_ALLOWED'));
+    }
+  }));
   app.use(express.json({ limit: '12mb' }));
   app.use(express.urlencoded({ extended: true, limit: '12mb' }));
   app.use('/generated', express.static(GENERATED_DIR, {
@@ -133,10 +145,8 @@ function getBaseUrl(req) {
   const configured = optionalText(process.env.API_BASE_URL);
   if (configured) return configured.replace(/\/+$/, '');
 
-  const forwardedProto = optionalText(req.get('x-forwarded-proto'));
-  const protocol = forwardedProto ? forwardedProto.split(',')[0].trim() : req.protocol;
-  const forwardedHost = optionalText(req.get('x-forwarded-host'));
-  const host = forwardedHost ? forwardedHost.split(',')[0].trim() : req.get('host');
+  const protocol = req.protocol;
+  const host = req.get('host') || `localhost:${process.env.PORT || 3000}`;
   return `${protocol}://${host}`;
 }
 
@@ -180,10 +190,34 @@ function getPhotoSource(req) {
     return `data:${mimeType};base64,${req.file.buffer.toString('base64')}`;
   }
 
-  const fromBody = optionalText(
-    req.body?.photoData || req.body?.imageData || req.body?.photoUrl || req.body?.imageUrl
-  );
-  return fromBody || null;
+  const fromBody = optionalText(req.body?.photoData || req.body?.imageData);
+  return fromBody.startsWith('data:image/') ? fromBody : null;
+}
+
+function getTrustProxySetting() {
+  const configured = optionalText(process.env.TRUST_PROXY);
+  if (!configured) return false;
+  if (/^\d+$/.test(configured)) return Number(configured);
+  if (configured === 'true') return true;
+  if (configured === 'false') return false;
+  return configured;
+}
+
+function isAllowedOrigin(origin) {
+  const configuredOrigins = optionalText(process.env.CORS_ORIGIN)
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (configuredOrigins.length > 0) {
+    return configuredOrigins.includes(origin);
+  }
+
+  return origin === 'null'
+    || origin === 'http://localhost:3000'
+    || origin === 'http://127.0.0.1:3000'
+    || origin === 'http://localhost:8080'
+    || origin === 'http://127.0.0.1:8080';
 }
 
 module.exports = { createApp };
