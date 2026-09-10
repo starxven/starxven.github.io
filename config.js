@@ -1,3 +1,3 @@
 window.APP_CONFIG = {
-  API_BASE_URL: "https://TU-BACKEND.com"
+  API_BASE_URL: "http://localhost:3000"
 };
