@@ -441,6 +441,7 @@
     </div>
   </main>
 
+  <script src="./config.js"></script>
   <script>
     const userNameLabel = document.getElementById('userNameLabel');
     const user = JSON.parse(localStorage.getItem('motionflow_user') || sessionStorage.getItem('motionflow_user') || 'null');
@@ -458,6 +459,21 @@
     let generatedVideoBlob = null;
     let generatedVideoUrl = null;
     let uploadedImageData = null;
+
+    function getApiBaseUrl() {
+      const hostname = window.location.hostname;
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return 'http://localhost:3000';
+      }
+
+      return String(window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL ? window.APP_CONFIG.API_BASE_URL : '').replace(/\/+$/, '');
+    }
+
+    function buildApiUrl(path) {
+      const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+      const apiBaseUrl = getApiBaseUrl();
+      return apiBaseUrl ? `${apiBaseUrl}${normalizedPath}` : normalizedPath;
+    }
 
     const generateBtn = document.getElementById('generateBtn');
     const downloadBtn = document.getElementById('downloadBtn');
@@ -589,9 +605,7 @@
 
       try {
         const durationVal = parseInt(videoDuration && videoDuration.value ? videoDuration.value : '10', 10) || 10;
-        const endpoint = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-          ? 'http://localhost:3000/api/generate'
-          : '/api/generate';
+        const endpoint = buildApiUrl('/api/generate');
 
         const payload = {
           prompt,

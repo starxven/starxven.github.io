@@ -62,10 +62,11 @@ Response (example):
 
 ## Frontend Integration
 
-The dashboard (`dashboard.html`) is already configured to:
-- Call `/api/generate` for text-to-video
-- Call `/api/generate-image` for image generation
-- Call `/api/photo-to-video` for photo conversion
+The dashboard (`dashboard.html`) loads `config.js` at runtime and uses `window.APP_CONFIG.API_BASE_URL` as the backend base URL outside local development.
+
+- On `localhost` / `127.0.0.1`, it still calls `http://localhost:3000`
+- In other environments, it calls `${window.APP_CONFIG.API_BASE_URL}/api/generate` for text-to-video
+- The backend also keeps `/api/generate-video` available as a compatible alias
 
 ## Deployment
 
