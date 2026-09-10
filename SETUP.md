@@ -106,7 +106,7 @@ Request:
 
 ### POST /api/photo-to-video
 
-Accepts either multipart form data with a `photo` file field or JSON with a `photoData` / `imageData` data URL, plus optional `prompt`, `duration`, and NSFW flags.
+Accepts either multipart form data with a `photo` file field or JSON with a `photoData` / `imageData` data URL, plus optional `prompt`, `duration`, and NSFW flags. Supported NSFW flag names are `allow_nsfw` and `allowNSFW`.
 
 ### POST /api/tts
 
