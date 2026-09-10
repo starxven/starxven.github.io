@@ -16,9 +16,11 @@ window.APP_CONFIG = {
 
 ## Endpoints esperados por `dashboard.html`
 
-- `POST /api/generate-video`
+- `POST /api/generate`
   - Body JSON: `{ "prompt": "..." }`
 - `POST /api/tts`
   - Body JSON: `{ "text": "...", "voiceId": "...", "format": "..." }`
 
-Ambos deben responder JSON.
+`dashboard.html` carga `config.js` en tiempo de ejecución y usa `window.APP_CONFIG.API_BASE_URL` como base para las llamadas al backend fuera de `localhost`. En desarrollo local mantiene `http://localhost:3000` como base.
+
+Ambos deben responder JSON. El backend también mantiene `POST /api/generate-video` como alias compatible para generación de video.
