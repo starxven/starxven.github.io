@@ -10,8 +10,8 @@
 ## 2️⃣ Setup Backend
 
 ```bash
-# Navigate to server folder
-cd server
+# Navigate to backend folder
+cd backend
 
 # Install dependencies
 npm install
@@ -60,7 +60,7 @@ curl -X POST http://localhost:3000/api/generate \
 ### Deploy on Vercel (Recommended)
 ```bash
 npm i -g vercel
-cd server
+cd backend
 vercel --prod
 ```
 

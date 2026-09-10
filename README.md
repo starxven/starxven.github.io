@@ -16,8 +16,14 @@ window.APP_CONFIG = {
 
 ## Endpoints esperados por `dashboard.html`
 
+- `POST /api/generate`
+  - Body JSON: `{ "prompt": "...", "duration": 10 }`
 - `POST /api/generate-video`
   - Body JSON: `{ "prompt": "..." }`
+- `POST /api/generate-image`
+  - Body JSON: `{ "prompt": "..." }`
+- `POST /api/photo-to-video`
+  - Body multipart/form-data: `photo`, `allow_nsfw`, `prompt`
 - `POST /api/tts`
   - Body JSON: `{ "text": "...", "voiceId": "...", "format": "..." }`
 

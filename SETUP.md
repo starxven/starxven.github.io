@@ -11,7 +11,7 @@
 ### 1. Install Dependencies
 
 ```bash
-cd server
+cd backend
 npm install
 ```
 
@@ -34,7 +34,7 @@ PORT=3000
 ### 4. Start the Server
 
 ```bash
-cd server
+cd backend
 npm start
 ```
 
@@ -66,6 +66,7 @@ The dashboard (`dashboard.html`) is already configured to:
 - Call `/api/generate` for text-to-video
 - Call `/api/generate-image` for image generation
 - Call `/api/photo-to-video` for photo conversion
+- Resolve the production backend URL from `config.js`
 
 ## Deployment
 
@@ -76,7 +77,7 @@ The dashboard (`dashboard.html`) is already configured to:
 npm i -g vercel
 
 # Deploy
-cd server
+cd backend
 vercel --prod
 ```
 
@@ -102,13 +103,13 @@ vercel --prod
 → Check `.env` file and make sure key is set correctly
 
 ### "Video generation timeout"
-→ Replicate API might be slow; increase timeout in `server/index.js` line ~54
+→ The simulated backend delay is defined in `backend/server.js` inside `simulateGeneration()`
 
 ### CORS errors in browser
 → CORS is already enabled; check browser console for actual error
 
 ### Videos not downloading
-→ Make sure `/public/videos` folder exists and is writable
+→ Make sure the `/videos/...` URL returned by the backend is reachable from the browser
 
 ## API Endpoints
 
@@ -127,7 +128,28 @@ Generate video from text prompt.
 ```json
 {
   "ok": true,
-  "url": "http://localhost:3000/videos/generated-1694123456789.mp4"
+  "jobId": "1",
+  "status": "queued",
+  "url": "http://localhost:3000/videos/generated-1.mp4"
+}
+```
+
+### POST /api/photo-to-video
+Convert an uploaded image into a simulated video result.
+
+**Request:** `multipart/form-data`
+- `photo`: image file
+- `allow_nsfw`: `0` or `1`
+- `prompt`: optional motion prompt
+
+**Response:**
+```json
+{
+  "ok": true,
+  "jobId": "2",
+  "status": "queued",
+  "kind": "photo-to-video",
+  "url": "http://localhost:3000/videos/generated-2.mp4"
 }
 ```
 
@@ -166,7 +188,7 @@ Server health check.
 A: No, but you get free credits ($5/month). Video generation is fast and cheap (~$0.03 per 10s video).
 
 **Q: Can I use other AI models?**
-A: Yes! Replace the model version IDs in `server/index.js` with others from Replicate.
+A: Yes! Replace the backend implementation in `backend/server.js` with your preferred provider integration.
 
 **Q: How long does video generation take?**
 A: Typically 30-90 seconds depending on prompt complexity and queue.
