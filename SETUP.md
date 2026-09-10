@@ -1,176 +1,130 @@
-# 🚀 Setup th3dr4k3r.ia Backend
+# Backend setup
 
-## Prerequisites
+## Requirements
 
-- Node.js v16+
-- npm or yarn
-- Replicate account (for AI video generation)
+- Node.js 18+
+- npm
+- A Replicate API key for image/video generation
+- An ElevenLabs API key if you want `/api/tts`
 
-## Installation Steps
-
-### 1. Install Dependencies
+## Install
 
 ```bash
-cd server
+cd backend
 npm install
 ```
 
-### 2. Get Replicate API Key
+## Configure environment
 
-1. Go to https://replicate.com
-2. Sign up or log in
-3. Go to **Account** → **API Tokens**
-4. Copy your API token
+Copy `env.example` into either `backend/.env` or the repository root `.env` and fill in the values you need.
 
-### 3. Configure Environment
-
-Edit `.env` in the root directory:
+Minimum settings:
 
 ```env
-REPLICATE_API_KEY=your_actual_api_key_here
+REPLICATE_API_KEY=your_replicate_key
 PORT=3000
+REPLICATE_VIDEO_MODEL=your_text_to_video_model
+REPLICATE_PHOTO_TO_VIDEO_MODEL=your_image_to_video_model
 ```
 
-### 4. Start the Server
+Optional TTS settings:
+
+```env
+ELEVEN_API_KEY=your_elevenlabs_key
+ELEVENLABS_DEFAULT_VOICE_ID=21m00Tcm4TlvDq8ikWAM
+ELEVENLABS_MODEL_ID=eleven_multilingual_v2
+```
+
+`env.example` also includes `REPLICATE_*_INPUT_TEMPLATE` overrides so you can adapt the request body to the exact Replicate model you deploy without editing application code.
+
+## Start locally
 
 ```bash
-cd server
+cd backend
 npm start
 ```
 
-You should see:
-```
-🚀 Server running on http://localhost:3000
-✅ REPLICATE_API_KEY: configured
-```
+The backend listens on `PORT=3000` by default and serves generated files back from `/generated/*`.
 
-### 5. Test the API
+## Health check
 
 ```bash
-curl -X POST http://localhost:3000/api/generate \
-  -H "Content-Type: application/json" \
-  -d '{"prompt": "A beautiful sunset over mountains", "duration": 5}'
+curl http://localhost:3000/health
 ```
 
-Response (example):
+Example response:
+
 ```json
 {
   "ok": true,
-  "url": "http://localhost:3000/videos/generated-1694123456789.mp4"
+  "status": "ok",
+  "api_configured": true,
+  "services": {
+    "replicate": true,
+    "elevenlabs": false,
+    "video": true,
+    "image": true,
+    "photoToVideo": true,
+    "tts": false
+  }
 }
 ```
 
-## Frontend Integration
-
-The dashboard (`dashboard.html`) is already configured to:
-- Call `/api/generate` for text-to-video
-- Call `/api/generate-image` for image generation
-- Call `/api/photo-to-video` for photo conversion
-
-## Deployment
-
-### Option A: Deploy on Vercel
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy
-cd server
-vercel --prod
-```
-
-### Option B: Deploy on Railway
-
-1. Push code to GitHub
-2. Go to https://railway.app
-3. Create new project from GitHub repo
-4. Add `REPLICATE_API_KEY` environment variable
-5. Deploy
-
-### Option C: Deploy on Render
-
-1. Go to https://render.com
-2. Create new Web Service
-3. Connect GitHub repo
-4. Set environment variables
-5. Deploy
-
-## Troubleshooting
-
-### "REPLICATE_API_KEY not configured"
-→ Check `.env` file and make sure key is set correctly
-
-### "Video generation timeout"
-→ Replicate API might be slow; increase timeout in `server/index.js` line ~54
-
-### CORS errors in browser
-→ CORS is already enabled; check browser console for actual error
-
-### Videos not downloading
-→ Make sure `/public/videos` folder exists and is writable
-
-## API Endpoints
+## Route contract
 
 ### POST /api/generate
-Generate video from text prompt.
+### POST /api/generate-video
 
-**Request:**
+Request:
+
 ```json
 {
-  "prompt": "A drone flying over a cyberpunk city at dawn",
+  "prompt": "A cinematic drone shot over a neon city",
   "duration": 10
 }
 ```
 
-**Response:**
+Success response:
+
 ```json
 {
   "ok": true,
-  "url": "http://localhost:3000/videos/generated-1694123456789.mp4"
+  "url": "http://localhost:3000/generated/video-...mp4"
 }
 ```
 
 ### POST /api/generate-image
-Generate image from text prompt.
 
-**Request:**
+Request:
+
 ```json
 {
-  "prompt": "A futuristic AI robot portrait"
+  "prompt": "A futuristic portrait with dramatic lighting"
 }
 ```
 
-**Response:**
+### POST /api/photo-to-video
+
+Accepts either multipart form data with a `photo` file field or JSON with `photoData` / `imageData` / `photoUrl` / `imageUrl`, plus optional `prompt`, `duration`, and NSFW flags.
+
+### POST /api/tts
+
+Request:
+
 ```json
 {
-  "ok": true,
-  "url": "https://replicate.delivery/..."
+  "text": "Hola mundo",
+  "voiceId": "21m00Tcm4TlvDq8ikWAM",
+  "format": "mp3_44100_128"
 }
 ```
 
-### GET /health
-Server health check.
+All error responses follow the same shape:
 
-**Response:**
 ```json
 {
-  "ok": true,
-  "api_configured": true
+  "ok": false,
+  "error": "clear message",
+  "code": "VALIDATION_ERROR"
 }
 ```
-
-## FAQ
-
-**Q: Do I need to pay for Replicate?**
-A: No, but you get free credits ($5/month). Video generation is fast and cheap (~$0.03 per 10s video).
-
-**Q: Can I use other AI models?**
-A: Yes! Replace the model version IDs in `server/index.js` with others from Replicate.
-
-**Q: How long does video generation take?**
-A: Typically 30-90 seconds depending on prompt complexity and queue.
-
----
-
-Need help? Open an issue on GitHub!
