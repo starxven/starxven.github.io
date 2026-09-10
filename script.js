@@ -291,15 +291,30 @@ function renderPhotoSelection(file, dataUrl) {
   if (photoUploadArea) photoUploadArea.style.display = 'none';
 
   if (photoStage) {
-    photoStage.innerHTML = `
-      <div class="photo-frame">
-        <img src="${dataUrl}" alt="Foto seleccionada para convertir en video" />
-      </div>
-      <div class="photo-caption">
-        <span class="photo-pill">Listo</span>
-        <strong>${file.name}</strong>
-      </div>
-    `;
+    photoStage.textContent = '';
+
+    const frame = document.createElement('div');
+    frame.className = 'photo-frame';
+
+    const img = document.createElement('img');
+    img.src = dataUrl;
+    img.alt = 'Foto seleccionada para convertir en video';
+    frame.appendChild(img);
+
+    const caption = document.createElement('div');
+    caption.className = 'photo-caption';
+
+    const pill = document.createElement('span');
+    pill.className = 'photo-pill';
+    pill.textContent = 'Listo';
+
+    const name = document.createElement('strong');
+    name.textContent = file.name;
+
+    caption.appendChild(pill);
+    caption.appendChild(name);
+    photoStage.appendChild(frame);
+    photoStage.appendChild(caption);
   }
 }
 
