@@ -378,16 +378,29 @@ if (generateBtn) {
   generateBtn.addEventListener('click', generateVideo);
 }
 
+function getApiBaseUrl() {
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'http://localhost:3000';
+  }
+
+  const configUrl = window.APP_CONFIG?.API_BASE_URL || '';
+  return configUrl.replace(/\/+$/, '');
+}
+
+function buildApiUrl(path) {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const apiBaseUrl = getApiBaseUrl();
+  return apiBaseUrl ? `${apiBaseUrl}${normalizedPath}` : normalizedPath;
+}
+
 // Upload helper for photo-to-video
 async function uploadPhotoToServer(file, allowNSFW = false) {
   const form = new FormData();
   form.append('photo', file);
   form.append('allow_nsfw', allowNSFW ? '1' : '0');
   form.append('prompt', 'Smooth animation and elegant motion');
-
-  const endpoint = (window.location.hostname === 'localhost')
-    ? 'http://localhost:3000/api/photo-to-video'
-    : '/api/photo-to-video';
+  const endpoint = buildApiUrl('/api/photo-to-video');
 
   const resp = await fetch(endpoint, {
     method: 'POST',
