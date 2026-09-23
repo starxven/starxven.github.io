@@ -950,9 +950,13 @@
 
       try {
         const durationVal = parseInt(videoDuration.value) || 10;
-        const endpoint = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-          ? 'https://api.klingai.com'
-          : '/api/generate';
+
+        // Backend público (Render). Se configura en config.js.
+        const backendBaseUrl =
+          (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) ||
+          'https://TU-SERVICIO.onrender.com';
+
+        const endpoint = `${backendBaseUrl.replace(/\/$/, '')}/api/generate`;
 
         const payload = {
           prompt,
