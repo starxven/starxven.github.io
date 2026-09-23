@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: th3dr4k3r-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: REPLICATE_API_TOKEN
+        sync: false
