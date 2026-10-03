@@ -8,8 +8,8 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}) 
 
 # Consigue tu API Key de Kling en su panel y añádela aquí o en tu archivo .env
-KLING_API_KEY = os.environ.get("api-key-kling-PLCKoVoY4rAdlCvh5hSCPprqX4EYp5S0Ck_15KeLTwg", "105477641")
-KLING_API_URL = "https://klingapi.com"
+- @app.route('/generar-video', codecs=['POST'])
++ @app.route('/generar-video', methods=['POST'])
 
 @app.route('/generar-video', codecs=['POST'])
 def generar_video():
