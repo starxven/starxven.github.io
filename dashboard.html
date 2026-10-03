@@ -713,20 +713,28 @@
     </div>
   </main>
 
+  <script src="config.js"></script>
   <script>
     // User Management
     const userNameLabel = document.getElementById('userNameLabel');
-    const user = JSON.parse(localStorage.getItem('motionflow_user') || sessionStorage.getItem('motionflow_user') || 'null');
-    
-    if (userNameLabel && user) {
+    const SESSION_KEY = 'th3dr4k3r_session';
+    let user = null;
+    try {
+      user = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    } catch (_) {
+      user = null;
+    }
+
+    if (!user) {
+      window.location.replace('login.html');
+    } else if (userNameLabel) {
       userNameLabel.textContent = user.username || 'Usuario';
     }
 
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', () => {
-        localStorage.clear();
-        sessionStorage.clear();
+        localStorage.removeItem(SESSION_KEY);
         window.location.href = 'login.html';
       });
     }
@@ -954,7 +962,7 @@
         // Backend público (Render). Se configura en config.js.
         const backendBaseUrl =
           (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) ||
-          'https://https://th3dr4k3r-api.onrender.com/api/generate';
+          'https://th3dr4k3r-api.onrender.com';
 
         const endpoint = `${backendBaseUrl.replace(/\/$/, '')}/api/generate`;
 

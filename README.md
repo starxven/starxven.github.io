@@ -1,24 +1,45 @@
-# Seguridad
+# th3dr4k3r.ia — generador de vídeo con IA
 
-- **No pongas API keys en frontend** (`dashboard.html`, `config.js`, etc.).
-- Usa un backend/proxy para llamar a Replicate y ElevenLabs.
-- Guarda las llaves en variables de entorno del backend.
+Frontend estático (GitHub Pages) + backend Node/Express (Render) que usa Replicate (Wan 2.7).
 
-## Frontend
+## Estructura
 
-Edita `config.js` y reemplaza:
+- `index.html`, `login.html`, `dashboard.html`, `style.css` → frontend (GitHub Pages).
+- `config.js` → define `window.APP_CONFIG.API_BASE_URL` (URL pública del backend en Render).
+- `backend/server.js` → backend Express. `backend/render.yaml` → configuración de Render.
 
-```js
-window.APP_CONFIG = {
-  API_BASE_URL: "https://TU-BACKEND.com"
-};
+## Autenticación
+
+Demo solo en el navegador (localStorage): `login.html` guarda la sesión en `th3dr4k3r_session` y `dashboard.html` redirige a `login.html` si no existe. No es seguridad real.
+
+## Backend
+
+```bash
+cd backend
+npm install
+cp .env.example .env   # define REPLICATE_API_TOKEN (o REPLICATE_API_KEY)
+npm start              # escucha en PORT (por defecto 10000)
 ```
 
-## Endpoints esperados por `dashboard.html`
+Endpoints:
 
-- `POST /api/generate-video`
-  - Body JSON: `{ "prompt": "..." }`
-- `POST /api/tts`
-  - Body JSON: `{ "text": "...", "voiceId": "...", "format": "..." }`
+- `GET /health` → `{ "ok": true, "api_configured": true }`
+- `POST /api/generate` → body JSON `{ prompt, duration, aspectRatio, model, style, sound, init_image? }` (`init_image` = data URI base64). Responde `{ ok, url, ... }`.
 
-Ambos deben responder JSON.
+Prueba:
+
+```bash
+curl -X POST http://localhost:10000/api/generate -H "Content-Type: application/json" \
+  -d '{"prompt":"Atardecer sobre el mar","duration":5}'
+```
+
+## Despliegue
+
+1. Render: Web Service con root directory `backend`, build `npm install`, start `npm start`, variable `REPLICATE_API_TOKEN`.
+2. Pon la URL de Render en `config.js` (`API_BASE_URL`, sin `/api/generate`).
+3. Abre `https://TU-SERVICIO.onrender.com/health` y comprueba `ok: true`.
+4. Publica el frontend en GitHub Pages.
+
+## Seguridad y costes
+
+Nunca subas `.env` ni tokens al repositorio ni al frontend. Replicate cobra por segundo de vídeo y borra las salidas tras ~1 hora.
