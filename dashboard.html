@@ -592,7 +592,7 @@
 
             <div class="form-group">
               <label class="form-label" for="videoDuration">Duración (segundos)</label>
-              <input id="videoDuration" type="number" min="3" max="60" value="10" />
+              <input id="videoDuration" type="number" min="3" max="210" value="10" />
             </div>
 
             <div class="form-group">
@@ -954,7 +954,7 @@
         // Backend público (Render). Se configura en config.js.
         const backendBaseUrl =
           (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) ||
-          'https://https://th3dr4k3r-api.onrender.com/api/generate';
+          'https://th3dr4k3r-api.onrender.com';
 
         const endpoint = `${backendBaseUrl.replace(/\/$/, '')}/api/generate`;
 
