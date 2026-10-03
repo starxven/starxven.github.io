@@ -2,6 +2,7 @@ services:
   - type: web
     name: th3dr4k3r-api
     runtime: node
+    rootDir: backend
     plan: free
     buildCommand: npm install
     startCommand: npm start
