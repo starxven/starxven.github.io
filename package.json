@@ -1,0 +1,17 @@
+{
+  "name": "th3dr4k3r-ia",
+  "version": "1.0.0",
+  "description": "th3dr4k3r.ia - Video generation platform with AI",
+  "type": "module",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "cd backend && node server.js",
+    "dev": "cd backend && node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["video", "generation", "ai"],
+  "author": "starxven",
+  "license": "ISC"
+}
