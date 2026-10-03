@@ -320,9 +320,11 @@ async function generateVideo() {
     const durationInput = document.getElementById('videoDuration');
     const duration = durationInput ? Number(durationInput.value) : 10;
 
-    const endpoint = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? 'http://localhost:3000/api/generate'
-      : '/api/generate';
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const baseUrl = isLocal
+      ? 'http://localhost:5000'
+      : ((window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || '');
+    const endpoint = `${baseUrl.replace(/\/$/, '')}/generar-video`;
 
     console.log('[Generate] Sending request to:', endpoint);
 
