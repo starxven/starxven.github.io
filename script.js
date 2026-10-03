@@ -321,8 +321,8 @@ async function generateVideo() {
     const duration = durationInput ? Number(durationInput.value) : 10;
 
     const endpoint = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? 'http://localhost:3000/api/generate'
-      : '/api/generate';
+      ? 'http://localhost:5000/generar-video'
+      : '/generar-video';
 
     console.log('[Generate] Sending request to:', endpoint);
 

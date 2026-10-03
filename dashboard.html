@@ -935,7 +935,7 @@
       ctx.fillText(`${videoDuration.value}s`, width / 2, height * 0.92);
     }
 
-    // Generate Video - NEW: call backend /api/generate (Replicate)
+    // Generate Video - NEW: call Flask backend /generar-video (Kling)
     generateBtn.addEventListener('click', async () => {
       const prompt = videoPrompt.value.trim();
       if (!prompt) {
@@ -954,9 +954,9 @@
         // Backend público (Render). Se configura en config.js.
         const backendBaseUrl =
           (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) ||
-          'https://https://th3dr4k3r-api.onrender.com/api/generate';
+          'http://localhost:5000';
 
-        const endpoint = `${backendBaseUrl.replace(/\/$/, '')}/api/generate`;
+        const endpoint = `${backendBaseUrl.replace(/\/$/, '')}/generar-video`;
 
         const payload = {
           prompt,
