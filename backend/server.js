@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { randomUUID } from "node:crypto";
 import Replicate from "replicate";
 
 dotenv.config();
@@ -147,6 +148,24 @@ function outputUrl(output) {
   return null;
 }
 
+const jobs = new Map();
+const JOB_TTL_MS = 60 * 60 * 1000;
+
+function cleanupJobs() {
+  const now = Date.now();
+  for (const [id, job] of jobs) {
+    if (now - job.createdAt > JOB_TTL_MS) jobs.delete(id);
+  }
+}
+
+app.get("/api/jobs/:id", (req, res) => {
+  const job = jobs.get(req.params.id);
+  if (!job) {
+    return res.status(404).json({ ok: false, status: "not_found", error: "Trabajo no encontrado." });
+  }
+  return res.json(job.result ? { ...job.result, status: job.status } : { ok: true, status: job.status });
+});
+
 app.post("/api/generate", async (req, res) => {
   try {
     if (!REPLICATE_API_TOKEN) {
@@ -173,7 +192,35 @@ app.post("/api/generate", async (req, res) => {
     const model = String(req.body?.model || "base");
     const sound = String(req.body?.sound || "none");
 
-    const imageUrl = await uploadImageIfPresent(req.body?.init_image);
+    cleanupJobs();
+    const jobId = randomUUID();
+    const job = { status: "pending", result: null, createdAt: Date.now() };
+    jobs.set(jobId, job);
+
+    runGeneration({ prompt, duration, aspectRatio, style, model, sound, initImage: req.body?.init_image })
+      .then((result) => {
+        job.result = { ok: true, ...result };
+        job.status = "done";
+      })
+      .catch((error) => {
+        console.error("Generation error:", error);
+        job.result = { ok: false, error: error?.message || "Error generando el vídeo" };
+        job.status = "error";
+      });
+
+    return res.status(202).json({ ok: true, jobId, status: "pending" });
+  } catch (error) {
+    console.error("Generation error:", error);
+    return res.status(500).json({
+      ok: false,
+      error: error?.message || "Error generando el vídeo"
+    });
+  }
+});
+
+async function runGeneration({ prompt, duration, aspectRatio, style, model, sound, initImage }) {
+  {
+    const imageUrl = await uploadImageIfPresent(initImage);
 
     const finalPrompt = [
       prompt,
@@ -217,22 +264,14 @@ app.post("/api/generate", async (req, res) => {
       throw new Error("Replicate no devolvió una URL de vídeo.");
     }
 
-    return res.json({
-      ok: true,
+    return {
       url,
       duration,
       aspectRatio,
       imageToVideo: Boolean(imageUrl)
-    });
-  } catch (error) {
-    console.error("Generation error:", error);
-
-    return res.status(500).json({
-      ok: false,
-      error: error?.message || "Error generando el vídeo"
-    });
+    };
   }
-});
+}
 
 const server = app.listen(PORT, HOST, () => {
   console.log(`th3dr4k3r backend running on ${HOST}:${PORT}`);

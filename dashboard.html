@@ -984,7 +984,28 @@
           throw new Error('Servidor: ' + (txt || resp.status));
         }
 
-        const data = await resp.json();
+        let data = await resp.json();
+
+        if (data.ok && data.jobId) {
+          const jobUrl = `${backendBaseUrl.replace(/\/$/, '')}/api/jobs/${data.jobId}`;
+          const started = Date.now();
+          let failures = 0;
+          data = null;
+          while (Date.now() - started < 20 * 60 * 1000) {
+            await new Promise(r => setTimeout(r, 4000));
+            try {
+              const jr = await fetch(jobUrl);
+              if (jr.status === 404) throw new Error('El trabajo se perdió en el servidor (¿reinicio?). Inténtalo de nuevo.');
+              const j = await jr.json();
+              failures = 0;
+              if (j.status === 'done' || j.status === 'error') { data = j; break; }
+            } catch (e) {
+              if (e.message && e.message.startsWith('El trabajo')) throw e;
+              if (++failures >= 15) throw e;
+            }
+          }
+          if (!data) throw new Error('Tiempo de espera agotado generando el vídeo.');
+        }
 
         if (!data.ok || !data.url) {
           throw new Error(data.error || 'Respuesta inválida del servidor');
