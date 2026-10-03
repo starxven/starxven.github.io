@@ -956,7 +956,8 @@
           (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) ||
           'https://th3dr4k3r-api-production.up.railway.app';
 
-        const endpoint = `${backendBaseUrl.replace(/\/$/, '')}/api/generate`;
+        const baseUrl = backendBaseUrl.replace(/\/$/, '');
+        const endpoint = `${baseUrl}/api/generate`;
 
         const payload = {
           prompt,
@@ -973,11 +974,17 @@
           payload.init_image = uploadedImageData;
         }
 
-        const resp = await fetch(endpoint, {
+        const postGenerate = (url) => fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
+
+        let resp = await postGenerate(endpoint);
+        if (resp.status === 404) {
+          // Backends antiguos exponen la ruta como /api/generate-video
+          resp = await postGenerate(`${baseUrl}/api/generate-video`);
+        }
 
         if (!resp.ok) {
           const txt = await resp.text();
