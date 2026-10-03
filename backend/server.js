@@ -8,6 +8,9 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT || 10000);
 const HOST = "0.0.0.0";
+const EXPRESS_TIMEOUT_MS = 300000;
+const REPLICATE_TIMEOUT_SECONDS = 600;
+const REPLICATE_TIMEOUT_MS = REPLICATE_TIMEOUT_SECONDS * 1000;
 
 const REPLICATE_API_TOKEN =
   process.env.REPLICATE_API_TOKEN ||
@@ -22,6 +25,11 @@ const replicate = new Replicate({
   auth: REPLICATE_API_TOKEN
 });
 
+app.use((req, res, next) => {
+  req.setTimeout(REPLICATE_TIMEOUT_MS);
+  res.setTimeout(REPLICATE_TIMEOUT_MS);
+  next();
+});
 app.use(cors());
 app.use(express.json({ limit: "12mb" }));
 
@@ -43,7 +51,7 @@ app.get("/health", (_req, res) => {
 function cleanDuration(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return 5;
-  return Math.max(2, Math.min(15, Math.round(n)));
+  return Math.max(2, Math.min(210, Math.round(n)));
 }
 
 function aspectToPrompt(aspectRatio) {
@@ -185,7 +193,9 @@ app.post("/api/generate", async (req, res) => {
           duration,
           resolution: resolutionFor(aspectRatio),
           enable_prompt_expansion: true
-        }
+        },
+        wait: { mode: "poll", interval: 2000 },
+        signal: AbortSignal.timeout(REPLICATE_TIMEOUT_MS)
       });
     } else {
       output = await replicate.run("wan-video/wan-2.7-t2v", {
@@ -195,7 +205,9 @@ app.post("/api/generate", async (req, res) => {
           resolution: resolutionFor(aspectRatio),
           aspect_ratio: aspectRatio,
           enable_prompt_expansion: true
-        }
+        },
+        wait: { mode: "poll", interval: 2000 },
+        signal: AbortSignal.timeout(REPLICATE_TIMEOUT_MS)
       });
     }
 
@@ -222,6 +234,11 @@ app.post("/api/generate", async (req, res) => {
   }
 });
 
-app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, () => {
   console.log(`th3dr4k3r backend running on ${HOST}:${PORT}`);
 });
+
+server.setTimeout(EXPRESS_TIMEOUT_MS);
+server.requestTimeout = REPLICATE_TIMEOUT_MS;
+server.headersTimeout = REPLICATE_TIMEOUT_MS + 1000;
+server.keepAliveTimeout = REPLICATE_TIMEOUT_MS;
