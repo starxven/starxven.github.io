@@ -14,17 +14,18 @@
     }
 
     :root {
-      --bg: #060b14;
-      --bg-2: #0d1423;
+      --bg: #05070f;
+      --bg-2: #080c18;
       --panel: rgba(17, 25, 39, 0.9);
       --panel-2: rgba(24, 36, 55, 0.95);
       --line: rgba(255,255,255,0.09);
       --text: #edf6ff;
       --muted: #9bb0ca;
-      --cyan: #65d9ff;
+      --cyan: #00f0ff;
       --blue: #4f7cff;
       --purple: #8c6dff;
-      --green: #42f5b4;
+      --green: #39ff88;
+      --magenta: #ff2bd6;
       --orange: #ffb454;
       --red: #ff6666;
     }
@@ -117,12 +118,12 @@
     .btn-primary {
       background: linear-gradient(135deg, var(--cyan), var(--purple));
       color: #07101b;
-      box-shadow: 0 8px 20px rgba(101, 217, 255, 0.2);
+      box-shadow: 0 0 18px rgba(0, 240, 255, 0.45), 0 8px 24px rgba(255, 43, 214, 0.25);
     }
 
     .btn-primary:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 12px 28px rgba(101, 217, 255, 0.3);
+      box-shadow: 0 0 26px rgba(0, 240, 255, 0.65), 0 12px 32px rgba(255, 43, 214, 0.35);
     }
 
     .btn-primary:disabled {
@@ -272,10 +273,12 @@
     .status-badge {
       display: inline-block;
       padding: 6px 12px;
-      background: rgba(66, 245, 180, 0.15);
-      border: 1px solid rgba(66, 245, 180, 0.3);
+      background: rgba(57, 255, 136, 0.12);
+      border: 1px solid rgba(57, 255, 136, 0.45);
       border-radius: 999px;
       color: var(--green);
+      text-shadow: 0 0 8px rgba(57, 255, 136, 0.8);
+      box-shadow: 0 0 12px rgba(57, 255, 136, 0.35);
       font-weight: 600;
       font-size: 0.8rem;
     }
@@ -371,7 +374,7 @@
       border: 1px solid var(--line);
       border-radius: 24px;
       padding: 20px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 24px rgba(0, 240, 255, 0.18);
       overflow: hidden;
       position: sticky;
       top: 100px;
@@ -448,35 +451,187 @@
       margin-bottom: 8px;
     }
 
-    .loading-spinner {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 2px solid rgba(101, 217, 255, 0.3);
-      border-top-color: var(--cyan);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes spinRev { to { transform: rotate(-360deg); } }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    @keyframes dotPulse { 0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1.2); } }
+    @keyframes borderFlow { to { background-position: 0 0, 300% 0; } }
+    @keyframes bgFlow { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+    @keyframes floatUp { 0% { transform: translateY(0); opacity: 0; } 20% { opacity: 0.9; } 100% { transform: translateY(-140px); opacity: 0; } }
+    @keyframes waveMove { to { transform: translateX(-50%); } }
+    @keyframes videoIn { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+
+    .neon-loader {
+      position: relative;
+      width: 56px;
+      height: 56px;
+      flex-shrink: 0;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    .neon-loader .ring {
+      position: absolute;
+      border-radius: 50%;
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+      mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+    }
+
+    .neon-loader .ring-1 {
+      inset: 0;
+      background: conic-gradient(from 0deg, transparent, var(--cyan));
+      filter: drop-shadow(0 0 6px var(--cyan));
+      animation: spin 1.2s linear infinite;
+    }
+
+    .neon-loader .ring-2 {
+      inset: 8px;
+      background: conic-gradient(from 0deg, transparent, var(--magenta));
+      filter: drop-shadow(0 0 6px var(--magenta));
+      animation: spinRev 1.6s linear infinite;
+    }
+
+    .neon-loader .ring-3 {
+      inset: 16px;
+      background: conic-gradient(from 0deg, transparent, var(--purple));
+      filter: drop-shadow(0 0 6px var(--purple));
+      animation: spin 2s linear infinite;
     }
 
     .generating-status {
       display: none;
       align-items: center;
-      gap: 12px;
-      padding: 12px;
-      background: rgba(101, 217, 255, 0.1);
-      border: 1px solid rgba(101, 217, 255, 0.2);
-      border-radius: 10px;
+      gap: 16px;
+      padding: 14px 16px;
+      background: rgba(0, 240, 255, 0.07);
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 12px;
       color: var(--cyan);
       font-weight: 600;
       margin-bottom: 12px;
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.8);
+      box-shadow: 0 0 18px rgba(0, 240, 255, 0.25), inset 0 0 14px rgba(140, 109, 255, 0.12);
     }
 
     .generating-status.active {
       display: flex;
+    }
+
+    .generating-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .generating-text .dots span {
+      display: inline-block;
+      animation: dotPulse 1.2s ease-in-out infinite;
+    }
+    .generating-text .dots span:nth-child(2) { animation-delay: 0.2s; }
+    .generating-text .dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    .generating-message {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--muted);
+      text-shadow: none;
+      margin-top: 2px;
+      min-height: 1.2em;
+    }
+
+    .progress-bar {
+      height: 5px;
+      margin-top: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      overflow: hidden;
+    }
+
+    .progress-bar::after {
+      content: '';
+      display: block;
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, var(--cyan), var(--magenta), var(--purple), var(--green), var(--cyan));
+      background-size: 200% 100%;
+      box-shadow: 0 0 10px var(--cyan);
+      animation: shimmer 1.8s linear infinite;
+    }
+
+    .video-container.generating {
+      border-color: transparent;
+      background:
+        linear-gradient(#0a0f1a, #060912) padding-box,
+        linear-gradient(90deg, var(--cyan), var(--magenta), var(--purple), var(--green), var(--cyan)) border-box;
+      background-size: 100% 100%, 300% 100%;
+      animation: borderFlow 4s linear infinite;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 28px rgba(255, 43, 214, 0.25), 0 0 40px rgba(0, 240, 255, 0.2);
+    }
+
+    .video-skeleton {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      overflow: hidden;
+      border-radius: inherit;
+      background: linear-gradient(120deg, #05070f, #130a2a, #06202a, #1c0a24, #05070f);
+      background-size: 300% 300%;
+      animation: bgFlow 6s ease infinite;
+    }
+
+    .video-container.generating .video-skeleton {
+      display: block;
+    }
+
+    .video-player { position: relative; }
+
+    .video-skeleton .particle {
+      position: absolute;
+      bottom: 10%;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 10px var(--cyan);
+      opacity: 0;
+      animation: floatUp 3.5s ease-in infinite;
+    }
+    .video-skeleton .particle:nth-child(1) { left: 12%; animation-delay: 0s; }
+    .video-skeleton .particle:nth-child(2) { left: 28%; background: var(--magenta); box-shadow: 0 0 10px var(--magenta); animation-delay: 0.7s; }
+    .video-skeleton .particle:nth-child(3) { left: 46%; animation-delay: 1.4s; }
+    .video-skeleton .particle:nth-child(4) { left: 63%; background: var(--purple); box-shadow: 0 0 10px var(--purple); animation-delay: 2.1s; }
+    .video-skeleton .particle:nth-child(5) { left: 78%; background: var(--green); box-shadow: 0 0 10px var(--green); animation-delay: 0.4s; }
+    .video-skeleton .particle:nth-child(6) { left: 90%; animation-delay: 1.8s; }
+
+    .video-skeleton .wave {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 200%;
+      height: 40%;
+      background: radial-gradient(ellipse at 50% 100%, rgba(0, 240, 255, 0.25), transparent 60%) 0 0 / 25% 100% repeat-x;
+      animation: waveMove 5s linear infinite;
+    }
+    .video-skeleton .wave.w2 {
+      background: radial-gradient(ellipse at 50% 100%, rgba(255, 43, 214, 0.22), transparent 60%) 0 0 / 33% 100% repeat-x;
+      animation-duration: 8s;
+    }
+
+    #videoContent video {
+      animation: videoIn 0.6s ease-out both;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .neon-loader .ring,
+      .progress-bar::after,
+      .generating-text .dots span,
+      .video-container.generating,
+      .video-skeleton,
+      .video-skeleton .particle,
+      .video-skeleton .wave,
+      #videoContent video {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+      }
+      .video-skeleton .particle { display: none; }
     }
 
     /* Video Duration Display */
@@ -486,6 +641,9 @@
       right: 10px;
       background: rgba(0, 0, 0, 0.6);
       color: var(--cyan);
+      text-shadow: 0 0 8px rgba(0, 240, 255, 0.9);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+      border: 1px solid rgba(0, 240, 255, 0.35);
       padding: 4px 12px;
       border-radius: 6px;
       font-size: 0.8rem;
@@ -668,11 +826,24 @@
         <div class="preview-panel">
           <div class="video-container">
             <div id="generatingStatus" class="generating-status">
-              <div class="loading-spinner"></div>
-              <span>Generando video...</span>
+              <div class="neon-loader" aria-hidden="true">
+                <div class="ring ring-1"></div>
+                <div class="ring ring-2"></div>
+                <div class="ring ring-3"></div>
+              </div>
+              <div class="generating-body" role="status" aria-live="polite">
+                <div class="generating-text">Generando video<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>
+                <div class="generating-message" id="generatingMessage">Analizando prompt…</div>
+                <div class="progress-bar"></div>
+              </div>
             </div>
 
             <div class="video-player" id="videoPlayerContainer">
+              <div class="video-skeleton" aria-hidden="true">
+                <span class="particle"></span><span class="particle"></span><span class="particle"></span>
+                <span class="particle"></span><span class="particle"></span><span class="particle"></span>
+                <div class="wave"></div><div class="wave w2"></div>
+              </div>
               <div id="videoContent">
                 <div class="video-placeholder">
                   <div class="placeholder-icon">🎥</div>
@@ -749,6 +920,29 @@
     const videoInfoContainer = document.getElementById('videoInfoContainer');
     const generatingStatus = document.getElementById('generatingStatus');
     const videoPlayerContainer = document.getElementById('videoPlayerContainer');
+    const generatingMessage = document.getElementById('generatingMessage');
+    const generatingMessages = ['Analizando prompt…', 'Renderizando escenas…', 'Aplicando estilo…', 'Componiendo fotogramas…'];
+    let generatingTimer = null;
+    let generatingIndex = 0;
+
+    function showGenerating() {
+      generatingStatus.classList.add('active');
+      generatingStatus.closest('.video-container').classList.add('generating');
+      generatingIndex = 0;
+      generatingMessage.textContent = generatingMessages[0];
+      clearInterval(generatingTimer);
+      generatingTimer = setInterval(() => {
+        generatingIndex = (generatingIndex + 1) % generatingMessages.length;
+        generatingMessage.textContent = generatingMessages[generatingIndex];
+      }, 2500);
+    }
+
+    function hideGenerating() {
+      generatingStatus.classList.remove('active');
+      generatingStatus.closest('.video-container').classList.remove('generating');
+      clearInterval(generatingTimer);
+      generatingTimer = null;
+    }
 
     // Image Upload Handling
     const uploadArea = document.getElementById('uploadArea');
@@ -944,7 +1138,7 @@
       }
 
       // Show loading UI
-      generatingStatus.classList.add('active');
+      showGenerating();
       generateBtn.disabled = true;
       generateBtn.textContent = 'Generando...';
 
@@ -1004,7 +1198,7 @@
         document.getElementById('videoModelDisplay').textContent = modelSelect.options[modelSelect.selectedIndex].text;
         document.getElementById('videoTimeDisplay').textContent = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
-        generatingStatus.classList.remove('active');
+        hideGenerating();
         videoInfoContainer.classList.add('active');
         downloadBtn.style.display = 'block';
 
@@ -1019,7 +1213,7 @@
       } catch (error) {
         console.error('Generation error:', error);
         alert('Error al generar el video: ' + (error.message || error));
-        generatingStatus.classList.remove('active');
+        hideGenerating();
       } finally {
         generateBtn.disabled = false;
         generateBtn.textContent = 'Generar Video con IA';
