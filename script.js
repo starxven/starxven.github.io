@@ -14,6 +14,19 @@ if (yearEl) {
   yearEl.textContent = new Date().getFullYear();
 }
 
+function getApiBaseUrl() {
+  const configuredBase = window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL;
+  if (configuredBase && typeof configuredBase === 'string' && configuredBase.trim()) {
+    return configuredBase.trim().replace(/\/$/, '');
+  }
+
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:3000';
+  }
+
+  return 'https://th3dr4k3r-api-production.up.railway.app';
+}
+
 const planKey = 'motionflow_plan';
 const usageKey = 'motionflow_usage';
 const userKey = 'motionflow_user';
@@ -215,7 +228,7 @@ function renderPreview(kind, prompt, extraLabel = '') {
 function updatePreviewWithVideo(videoUrl, labelText = 'Video generado') {
   const preview = document.getElementById('studioPreview');
   const previewLabel = document.getElementById('previewLabel');
-  
+
   if (previewLabel) previewLabel.textContent = labelText;
   if (!preview) return;
 
@@ -223,9 +236,9 @@ function updatePreviewWithVideo(videoUrl, labelText = 'Video generado') {
 
   // Create video element with proper styling
   preview.innerHTML = `
-    <video 
-      id="generatedVideo" 
-      controls 
+    <video
+      id="generatedVideo"
+      controls
       autoplay
       muted
       playsinline
@@ -239,7 +252,7 @@ function updatePreviewWithVideo(videoUrl, labelText = 'Video generado') {
   if (videoEl) {
     // Try to autoplay (muted by default)
     videoEl.muted = true;
-    
+
     const playPromise = videoEl.play();
     if (playPromise && typeof playPromise.then === 'function') {
       playPromise.then(() => {
@@ -319,10 +332,8 @@ async function generateVideo() {
   try {
     const durationInput = document.getElementById('videoDuration');
     const duration = durationInput ? Number(durationInput.value) : 10;
-
-    const endpoint = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-      ? 'http://localhost:3000/api/generate'
-      : '/api/generate';
+    const backendBase = getApiBaseUrl();
+    const endpoint = `${backendBase}/api/generate`;
 
     console.log('[Generate] Sending request to:', endpoint);
 
@@ -343,7 +354,7 @@ async function generateVideo() {
     console.log('[Generate] Response status:', resp.status);
 
     const data = await resp.json();
-    
+
     if (!data.ok) {
       showToast('Error al generar: ' + (data.error || 'unknown'), true);
       if (statusPill) statusPill.textContent = 'Error en generación';
@@ -393,9 +404,7 @@ async function uploadPhotoToServer(file, allowNSFW = false) {
   form.append('allow_nsfw', allowNSFW ? '1' : '0');
   form.append('prompt', 'Smooth animation and elegant motion');
 
-  const endpoint = (window.location.hostname === 'localhost')
-    ? 'http://localhost:3000/api/photo-to-video'
-    : '/api/photo-to-video';
+  const endpoint = `${getApiBaseUrl()}/api/photo-to-video`;
 
   const resp = await fetch(endpoint, {
     method: 'POST',
@@ -427,7 +436,7 @@ document.querySelectorAll('.quick-create-btn').forEach((button) => {
       try {
         console.log('[PhotoVideo] Uploading photo...');
         const result = await uploadPhotoToServer(file, allowNSFW);
-        
+
         if (!result.ok) {
           const err = result.error || 'unknown';
           showToast('Error al procesar la imagen: ' + err, true);
@@ -512,7 +521,7 @@ if (downloadBtn) {
       alert('No hay video generado para descargar.');
       return;
     }
-    
+
     const filename = lastGeneratedVideoName || lastGeneratedVideoUrl.split('/').pop();
 
     try {
