@@ -332,6 +332,14 @@ async function generateVideo() {
       body: JSON.stringify({ prompt: currentPrompt, duration })
     });
 
+    console.log('[Generate] Sending request to:', endpoint);
+
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: currentPrompt, duration })
+    });
+
     console.log('[Generate] Response status:', resp.status);
 
     const data = await resp.json();
