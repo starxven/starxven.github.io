@@ -242,3 +242,17 @@ server.setTimeout(EXPRESS_TIMEOUT_MS);
 server.requestTimeout = REPLICATE_TIMEOUT_MS;
 server.headersTimeout = REPLICATE_TIMEOUT_MS + 1000;
 server.keepAliveTimeout = REPLICATE_TIMEOUT_MS;
+
+app.post("/api/generate", async (req, res) => {
+  try {
+    const prompt = String(req.body?.prompt || "").trim();
+    if (!prompt) {
+      return res.status(400).json({ ok: false, error: "prompt is required" });
+    }
+
+    // aquí llamas a MuAPI
+    return res.json({ ok: true, url: "..." });
+  } catch (error) {
+    return res.status(500).json({ ok: false, error: error.message });
+  }
+});
